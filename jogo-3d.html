@@ -73,8 +73,8 @@
   #vig{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 40%,rgba(0,0,0,.72) 100%)}
   #snd{position:absolute;top:14px;right:16px;z-index:50;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:12px;color:#5a7a82;background:rgba(10,16,20,.6);border:1px solid #2a4a52;border-radius:4px;padding:5px 10px;letter-spacing:1px}
   /* botões de toque (celular) */
-  #touch{position:absolute;right:18px;bottom:92px;z-index:30;display:none;flex-direction:column;gap:14px;align-items:center}
-  @media (pointer:coarse),(max-width:820px){ #touch{display:flex} }
+  #touch{position:absolute;right:18px;bottom:90px;z-index:30;display:flex;flex-direction:column;gap:4px;align-items:center}
+  .tlabel{font-family:'Share Tech Mono',monospace;font-size:9px;color:#7a9aa2;letter-spacing:1px;margin-bottom:8px;text-align:center}
   .tbtn{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,210,62,.6);background:rgba(12,18,24,.78);color:#ffe8a8;font-family:'Cinzel',serif;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 4px 18px rgba(0,0,0,.55)}
   .tbtn:active{background:rgba(40,30,12,.92);transform:scale(.94)}
   .tbtn.atk{border-color:rgba(255,120,80,.7);color:#ffc0a0;font-size:24px}
@@ -134,8 +134,10 @@
   </div>
 
   <div id="touch">
-    <button class="tbtn" onpointerdown="event.preventDefault(); if(typeof interact==='function') interact();" title="Interagir">E</button>
-    <button class="tbtn atk" onpointerdown="event.preventDefault(); if(typeof playerAttack==='function') playerAttack();" title="Atacar">⚔</button>
+    <button class="tbtn atk" onpointerdown="event.preventDefault(); if(typeof playerAttack==='function') playerAttack();" title="Atacar (tecla ESPAÇO)">⚔</button>
+    <div class="tlabel">ATACAR<br>(espaço)</div>
+    <button class="tbtn" onpointerdown="event.preventDefault(); if(typeof interact==='function') interact();" title="Interagir (tecla E)">E</button>
+    <div class="tlabel">USAR<br>(E)</div>
   </div>
   <div id="flash"></div>
   <div id="snd" onclick="toggleSound()">♪ som: on</div>
@@ -190,26 +192,41 @@ function drawGuardianChamber(t){
   bx.fillStyle='rgba(12,18,26,.9)'; bx.fillRect(0,0,W*0.12,H); bx.fillRect(W*0.88,0,W*0.12,H);
   bx.fillStyle='rgba(70,100,120,.10)';
   for(let y=50;y<H;y+=64){ bx.fillRect(W*0.035,y,W*0.05,4); bx.fillRect(W*0.915,y,W*0.05,4); }
-  // O GUARDIÃO: figura encapuzada sombria espreitando atrás do tabuleiro
-  const gx=W/2, eyeY=H*0.085, glitch=Math.random()>0.95?1.6:1, fl=(0.5+Math.abs(Math.sin(t/240))*0.3)*glitch;
-  const halo=bx.createRadialGradient(gx,eyeY,6,gx,eyeY,Math.min(W,H)*0.34);
-  halo.addColorStop(0,'rgba(60,170,195,'+(0.10*fl)+')'); halo.addColorStop(1,'rgba(0,0,0,0)');
+  // O GUARDIÃO: figura encapuzada (capuz tipo pirâmide) — NÍTIDA e imponente
+  const gx=W/2, eyeY=H*0.082, glitch=Math.random()>0.96?1.7:1;
+  if(guardianRage>0) guardianRage-=0.016;
+  const rage=guardianRage>0;
+  const fl=(0.55+Math.abs(Math.sin(t/(rage?120:240)))*0.35)*glitch;
+  const eyeCol=rage?'255,64,46':'150,238,250', eyeHex=rage?'#ff3826':'#5fd0e0';
+  // halo
+  const halo=bx.createRadialGradient(gx,eyeY,6,gx,eyeY,Math.min(W,H)*0.40);
+  halo.addColorStop(0,'rgba('+(rage?'220,60,50':'60,170,195')+','+(0.15*fl)+')'); halo.addColorStop(1,'rgba(0,0,0,0)');
   bx.fillStyle=halo; bx.fillRect(0,0,W,H);
-  // manto + ombros largos descendo pelas laterais (atrás do tabuleiro)
-  bx.fillStyle='rgba(5,9,15,.95)';
+  // manto + capuz-pirâmide (silhueta sólida)
+  bx.fillStyle='rgba(8,12,18,.98)';
   bx.beginPath();
-  bx.moveTo(gx-W*0.34,H);
-  bx.quadraticCurveTo(gx-W*0.22,H*0.20,gx-52,H*0.12);
-  bx.quadraticCurveTo(gx,H*0.005,gx+52,H*0.12);
-  bx.quadraticCurveTo(gx+W*0.22,H*0.20,gx+W*0.34,H);
+  bx.moveTo(gx-W*0.36,H);
+  bx.quadraticCurveTo(gx-W*0.23,H*0.22,gx-66,H*0.13);
+  bx.lineTo(gx,-H*0.012);                       // pico nítido do capuz (pirâmide)
+  bx.lineTo(gx+66,H*0.13);
+  bx.quadraticCurveTo(gx+W*0.23,H*0.22,gx+W*0.36,H);
   bx.closePath(); bx.fill();
-  bx.strokeStyle='rgba(80,160,180,'+(0.22*fl)+')'; bx.lineWidth=2;
-  bx.beginPath(); bx.moveTo(gx-52,H*0.12); bx.quadraticCurveTo(gx,H*0.005,gx+52,H*0.12); bx.stroke();
-  // abertura escura do capuz (rosto vazio) + olhos brilhando
-  bx.fillStyle='rgba(2,4,8,.96)'; bx.beginPath(); bx.ellipse(gx,eyeY+6,28,40,0,0,Math.PI*2); bx.fill();
-  bx.save(); bx.shadowColor='#5fd0e0'; bx.shadowBlur=16*fl; bx.fillStyle='rgba(155,238,250,'+(0.7+fl*0.3)+')';
-  bx.beginPath(); bx.arc(gx-11,eyeY,4.2,0,Math.PI*2); bx.fill();
-  bx.beginPath(); bx.arc(gx+11,eyeY,4.2,0,Math.PI*2); bx.fill(); bx.restore();
+  // contorno luminoso do capuz (deixa NÍTIDO)
+  bx.strokeStyle='rgba('+(rage?'255,95,72':'120,200,222')+','+(0.5+0.3*fl)+')'; bx.lineWidth=2.6; bx.lineJoin='round';
+  bx.beginPath(); bx.moveTo(gx-66,H*0.13); bx.lineTo(gx,-H*0.012); bx.lineTo(gx+66,H*0.13); bx.stroke();
+  // dobras internas (definição)
+  bx.strokeStyle='rgba('+(rage?'130,34,26':'30,72,86')+',.6)'; bx.lineWidth=1.5;
+  bx.beginPath(); bx.moveTo(gx-32,H*0.066); bx.lineTo(gx,H*0.018); bx.lineTo(gx+32,H*0.066); bx.stroke();
+  // rosto vazio + olhos (mais visíveis; vermelhos de raiva ao capturar peça)
+  bx.fillStyle='rgba(2,4,8,.98)'; bx.beginPath(); bx.ellipse(gx,eyeY+8,30,42,0,0,Math.PI*2); bx.fill();
+  bx.save(); bx.shadowColor=eyeHex; bx.shadowBlur=(rage?28:20)*fl; bx.fillStyle='rgba('+eyeCol+','+(0.85+fl*0.15)+')';
+  bx.beginPath(); bx.ellipse(gx-12,eyeY,5,6.6,0.15,0,Math.PI*2); bx.fill();
+  bx.beginPath(); bx.ellipse(gx+12,eyeY,5,6.6,-0.15,0,Math.PI*2); bx.fill();
+  bx.shadowBlur=0; bx.fillStyle='rgba(255,255,255,.92)';
+  bx.beginPath(); bx.arc(gx-12,eyeY-1.5,1.8,0,Math.PI*2); bx.fill();
+  bx.beginPath(); bx.arc(gx+12,eyeY-1.5,1.8,0,Math.PI*2); bx.fill(); bx.restore();
+  if(rage){ bx.fillStyle='rgba(255,40,30,'+(0.3*fl)+')'; bx.beginPath(); bx.moveTo(gx-18,eyeY+2); bx.lineTo(gx-6,eyeY-2); bx.lineTo(gx-7,eyeY+1); bx.fill();
+    bx.beginPath(); bx.moveTo(gx+18,eyeY+2); bx.lineTo(gx+6,eyeY-2); bx.lineTo(gx+7,eyeY+1); bx.fill(); }  // sobrancelhas de fúria
   const fog=bx.createLinearGradient(0,H,0,H*0.66); fog.addColorStop(0,'rgba(20,42,52,.42)'); fog.addColorStop(1,'rgba(0,0,0,0)');
   bx.fillStyle=fog; bx.fillRect(0,H*0.66,W,H*0.34);
   motes.forEach(m=>{ m.y+=m.vy*0.5; m.x+=m.vx; if(m.y<-4){m.y=H+4;m.x=Math.random()*W;} bx.fillStyle='rgba(150,200,210,'+(m.a*0.4)+')'; bx.beginPath(); bx.arc(m.x,m.y,m.r,0,Math.PI*2); bx.fill(); });
@@ -260,7 +277,7 @@ const CHAMBERS=[
            {dx:0.76,dy:0.64,text:'Registro: "Derrote o GRANDE GUARDIÃO em uma partida completa e a última verdade será sua."'} ] },
 ];
 let roomIdx=0, hp=5, maxHp=5, frags=0, enemies=[], atk=0, hurtT=0;
-let duelMode=false, duelDepth=2, duelTurn='w';
+let duelMode=false, duelDepth=2, duelTurn='w', guardianRage=0;
 function curPuzIdx(){ return CHAMBERS[roomIdx].puzzle; }
 function buildChamber(idx){
   roomIdx=idx; guardianDone=false; doorOpen=false; const ch=CHAMBERS[idx];
@@ -734,7 +751,8 @@ function duelAfterPlayer(){
   boardLocked=true; document.getElementById('boardHint').textContent='⏳ O Grande Guardião pensa...';
   setTimeout(()=>{
     const m=aiMove('b',duelDepth);
-    if(m){ B[m[2]][m[3]]=B[m[0]][m[1]]; B[m[0]][m[1]]=null; const mp=B[m[2]][m[3]]; if(mp.t==='p'&&(m[2]===0||m[2]===7))mp.t='q'; lastMove=[m[0],m[1],m[2],m[3]]; renderBoard(); SFX.move(); }
+    if(m){ if(B[m[2]][m[3]] && B[m[2]][m[3]].c==='w'){ guardianRage=1.7; SFX.wrong(); }  // capturou peça sua → FÚRIA
+      B[m[2]][m[3]]=B[m[0]][m[1]]; B[m[0]][m[1]]=null; const mp=B[m[2]][m[3]]; if(mp.t==='p'&&(m[2]===0||m[2]===7))mp.t='q'; lastMove=[m[0],m[1],m[2],m[3]]; renderBoard(); SFX.move(); }
     if(isMate('w')){ duelEnd('lose'); return; }
     if(allLegal('w',B).length===0){ duelEnd('draw'); return; }
     boardLocked=false;
