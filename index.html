@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Eternum — O Guardião do Tabuleiro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Share+Tech+Mono&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100%;background:#05060a;color:#d8cdb4;font-family:'EB Garamond',serif;overflow-x:hidden}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;
+    background:radial-gradient(ellipse at 50% 32%,rgba(30,40,60,.18),rgba(3,4,12,.6) 60%,rgba(2,3,9,.85))}
+  .kick{font-family:'Share Tech Mono',monospace;color:#5a8a96;letter-spacing:7px;font-size:12px;text-transform:uppercase;margin-bottom:16px}
+  h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(34px,11vw,78px);letter-spacing:5px;line-height:.95;
+    background:linear-gradient(180deg,#ffffff,#ffe9a8 45%,#ffb347 76%,#ff7a2e);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 26px rgba(255,170,50,.45))}
+  .sub{font-family:'Cinzel',serif;font-weight:500;letter-spacing:4px;font-size:clamp(12px,3.4vw,18px);color:#7fb0bc;margin-top:14px;text-transform:uppercase}
+  .lore{font-style:italic;color:#a39a82;max-width:520px;margin:22px auto 4px;line-height:1.7;font-size:clamp(14px,4vw,17px)}
+  .pick{margin-top:14px;font-family:'Share Tech Mono',monospace;color:#6f99a2;letter-spacing:2px;font-size:13px}
+  .cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+  .card{display:block;text-decoration:none;width:min(260px,86vw);padding:22px 18px;border-radius:16px;
+    background:linear-gradient(180deg,rgba(22,30,52,.7),rgba(10,15,28,.8));border:1px solid rgba(120,150,220,.25);
+    box-shadow:0 14px 40px rgba(0,0,0,.5);transition:transform .15s,border-color .15s,box-shadow .15s}
+  .card:hover{transform:translateY(-4px);border-color:rgba(255,210,62,.5);box-shadow:0 18px 48px rgba(180,140,40,.25)}
+  .card .ico{font-size:46px;line-height:1}
+  .card .t{font-family:'Cinzel',serif;font-weight:700;letter-spacing:2px;color:#e8d39a;font-size:20px;margin:12px 0 6px;text-transform:uppercase}
+  .card .d{font-size:14px;color:#9fb0c4;line-height:1.5}
+  .card .go{display:inline-block;margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;color:#0b0d12;
+    background:linear-gradient(180deg,#ffe08a,#ffb347 55%,#ff8a2e);padding:9px 22px;border-radius:8px;text-transform:uppercase;font-weight:bold}
+  .foot{margin-top:30px;font-family:'Share Tech Mono',monospace;color:#56648a;font-size:12px;letter-spacing:1.5px}
+</style>
+</head>
+<body>
+  <div class="kick">◆ Arquivos Eternos ◆</div>
+  <h1>CODEX ETERNUM</h1>
+  <div class="sub">O Guardião do Tabuleiro</div>
+  <p class="lore">Uma civilização avançada desapareceu. Seu conhecimento foi selado por uma inteligência ancestral que pensa em xadrez. Explore, enfrente os Servos Corrompidos e derrote o Guardião para revelar a verdade.</p>
+  <div class="pick">Escolha o tabuleiro:</div>
+  <div class="cards">
+    <a class="card" href="jogo-3d.html">
+      <div class="ico">🧊</div>
+      <div class="t">Tabuleiro 3D</div>
+      <div class="d">Peças em 3D, perspectiva e iluminação. Visual moderno e imersivo.</div>
+      <span class="go">Jogar 3D</span>
+    </a>
+    <a class="card" href="jogo-2d.html">
+      <div class="ico">♟</div>
+      <div class="t">Tabuleiro 2D</div>
+      <div class="d">Tabuleiro clássico dourado, limpo e leve. Estilo tradicional.</div>
+      <span class="go">Jogar 2D</span>
+    </a>
+  </div>
+  <div class="foot">Use fones de ouvido para a melhor experiência · funciona no celular e no PC</div>
+</body>
+</html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Eternum (Tabuleiro 2D)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Share+Tech+Mono&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#05060a;overflow:hidden;font-family:'EB Garamond',serif;color:#d8cdb4}
+  #wrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  #bg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+  .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:10;padding:24px}
+  .hidden{display:none!important}
+
+  /* TÍTULO */
+  #title .kick{font-family:'Share Tech Mono',monospace;color:#5a8a96;letter-spacing:8px;font-size:13px;text-transform:uppercase;margin-bottom:18px;opacity:.85}
+  #title h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(40px,9vw,86px);letter-spacing:6px;color:#e8d39a;
+    text-shadow:0 0 30px rgba(190,150,70,.5),0 2px 4px #000;line-height:1}
+  #title .sub{font-family:'Cinzel',serif;font-weight:500;letter-spacing:5px;font-size:clamp(13px,2.2vw,20px);color:#7fb0bc;margin-top:16px;text-transform:uppercase}
+  .btn{margin-top:40px;cursor:pointer;font-family:'Cinzel',serif;font-weight:700;font-size:16px;letter-spacing:3px;text-transform:uppercase;
+    color:#0b0d12;padding:14px 44px;border:none;border-radius:4px;background:linear-gradient(180deg,#e8d39a,#b8923c);
+    box-shadow:0 6px 26px rgba(180,140,50,.4),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .12s,filter .15s}
+  .btn:hover{transform:translateY(-2px);filter:brightness(1.1)}
+  .btn.ghost{background:none;border:1px solid #4a6b73;color:#9fc4cc;box-shadow:none}
+
+  /* DIÁLOGO DO GUARDIÃO */
+  #dialog{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:min(760px,92vw);z-index:20;
+    background:linear-gradient(180deg,rgba(10,20,26,.92),rgba(6,12,16,.95));border:1px solid rgba(90,160,180,.4);
+    border-radius:10px;padding:16px 22px;box-shadow:0 10px 40px rgba(0,0,0,.6),0 0 30px rgba(40,120,140,.15);backdrop-filter:blur(4px)}
+  #dialog .who{font-family:'Share Tech Mono',monospace;color:#5fd0e0;letter-spacing:3px;font-size:12px;text-transform:uppercase;margin-bottom:6px;
+    text-shadow:0 0 10px rgba(80,200,220,.5)}
+  #dialog .txt{font-family:'Share Tech Mono',monospace;color:#bfe6ec;font-size:15px;line-height:1.6;min-height:48px}
+  #dialog .go{margin-top:10px;text-align:right}
+  #dialog .go button{cursor:pointer;font-family:'Share Tech Mono',monospace;background:none;border:1px solid #3a6b73;color:#8fd0da;
+    padding:5px 16px;border-radius:4px;font-size:12px;letter-spacing:2px}
+  #dialog .go button:hover{background:rgba(80,200,220,.12)}
+
+  /* TABULEIRO */
+  #boardWrap{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:15;gap:14px}
+  #boardTitle{font-family:'Cinzel',serif;letter-spacing:4px;color:#7fb0bc;font-size:14px;text-transform:uppercase}
+  #board{display:grid;grid-template-columns:repeat(8,1fr);width:min(560px,86vw);aspect-ratio:1;border-radius:6px;overflow:hidden;
+    box-shadow:0 0 0 3px #b8923c,0 0 0 5px rgba(20,16,8,.9),0 0 46px rgba(200,160,70,.35),0 22px 60px rgba(0,0,0,.75)}
+  .sq{position:relative;display:flex;align-items:center;justify-content:center;font-size:min(7vw,46px);line-height:1;user-select:none;cursor:default}
+  .sq.lite{background:linear-gradient(145deg,#c8b07a,#b89a5e)}
+  .sq.dark{background:linear-gradient(145deg,#4a3722,#382713)}
+  .sq.last{box-shadow:inset 0 0 0 100px rgba(255,210,62,.16)}
+  .sq.sel{box-shadow:inset 0 0 0 4px #ffd23e,inset 0 0 0 100px rgba(255,210,62,.12)}
+  .sq.mv::after{content:'';position:absolute;width:26%;height:26%;border-radius:50%;background:rgba(255,220,120,.55);box-shadow:0 0 10px rgba(255,210,80,.6)}
+  .sq.cap{box-shadow:inset 0 0 0 4px rgba(255,120,80,.8)}
+  .sq.chk{box-shadow:inset 0 0 0 4px rgba(255,70,60,.95),inset 0 0 30px rgba(255,40,30,.35)}
+  .sq .coord{position:absolute;font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:bold;opacity:.7;pointer-events:none}
+  .sq .coord.file{right:3px;bottom:1px} .sq .coord.rank{left:3px;top:1px}
+  .sq.lite .coord{color:#4a3712} .sq.dark .coord{color:#c8b07a}
+  .pc{cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+  .pc.w{color:#f6ecd2;text-shadow:0 0 1px #2a1d08,0 1px 0 #2a1d08,1px 0 0 #6a5020,-1px 0 0 #6a5020,0 -1px 0 #8a6a28}
+  .pc.b{color:#181410;text-shadow:0 0 1px #d8c89a,0 1px 0 rgba(220,200,150,.4),0 0 6px rgba(0,0,0,.5)}
+  /* tabuleiro 3D */
+  #board.is3d{display:none}
+  #board3d{width:min(560px,86vw);aspect-ratio:1;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px #b8923c,0 0 48px rgba(200,160,70,.3),0 22px 60px rgba(0,0,0,.75);display:none}
+  #board3d.on{display:block}
+  #board3d canvas{display:block;width:100%;height:100%}
+  #boardHint{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1px;color:#6f99a2;min-height:18px;text-align:center;max-width:560px}
+
+  /* REVELAÇÃO */
+  #reveal h2{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(28px,6vw,56px);letter-spacing:4px;color:#e8d39a;text-shadow:0 0 30px rgba(200,160,80,.6)}
+  #reveal .lore{font-family:'EB Garamond',serif;font-style:italic;font-size:clamp(15px,2.4vw,20px);color:#cdbf9e;max-width:620px;line-height:1.7;margin-top:20px}
+  #reveal .tag{font-family:'Share Tech Mono',monospace;color:#5fd0e0;letter-spacing:3px;font-size:13px;margin-top:24px;text-transform:uppercase}
+
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:40;pointer-events:none}
+  #vig{position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 40%,rgba(0,0,0,.72) 100%)}
+  #snd{position:absolute;top:14px;right:16px;z-index:50;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:12px;color:#5a7a82;background:rgba(10,16,20,.6);border:1px solid #2a4a52;border-radius:4px;padding:5px 10px;letter-spacing:1px}
+  /* botões de toque (celular) */
+  #touch{position:absolute;right:18px;bottom:92px;z-index:30;display:none;flex-direction:column;gap:14px;align-items:center}
+  @media (pointer:coarse),(max-width:820px){ #touch{display:flex} }
+  .tbtn{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,210,62,.6);background:rgba(12,18,24,.78);color:#ffe8a8;font-family:'Cinzel',serif;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 4px 18px rgba(0,0,0,.55)}
+  .tbtn:active{background:rgba(40,30,12,.92);transform:scale(.94)}
+  .tbtn.atk{border-color:rgba(255,120,80,.7);color:#ffc0a0;font-size:24px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="bg"></canvas>
+  <div id="vig"></div>
+
+  <!-- TÍTULO -->
+  <div id="title" class="layer">
+    <div class="kick">◆ Arquivos Eternos ◆</div>
+    <h1>CODEX ETERNUM</h1>
+    <div class="sub">O Guardião do Tabuleiro</div>
+    <button class="btn" onclick="startIntro()">Entrar nos Arquivos</button>
+  </div>
+
+  <!-- INTRO (narrativa) -->
+  <div id="intro" class="layer hidden">
+    <div id="introTxt" style="font-family:'EB Garamond',serif;font-style:italic;font-size:clamp(16px,2.6vw,22px);max-width:680px;line-height:1.8;color:#cdbf9e;min-height:160px"></div>
+    <button class="btn ghost" id="introBtn" onclick="introNext()" style="margin-top:30px">continuar</button>
+  </div>
+
+  <!-- TABULEIRO -->
+  <div id="boardWrap">
+    <div id="boardTitle"></div>
+    <div id="board3d"></div>
+    <div id="board"></div>
+    <div id="boardHint"></div>
+  </div>
+
+  <!-- REVELAÇÃO -->
+  <div id="reveal" class="layer hidden">
+    <h2 id="revealTitle"></h2>
+    <div class="lore" id="revealLore"></div>
+    <div class="tag" id="revealTag"></div>
+    <button class="btn" id="revealBtn" onclick="location.reload()" style="margin-top:34px">jogar de novo</button>
+  </div>
+
+  <!-- ESCOLHA DE DIFICULDADE (duelo) -->
+  <div id="difSel" class="layer hidden" style="z-index:25;background:rgba(3,5,12,.88)">
+    <h2 style="font-family:'Cinzel',serif;font-weight:900;color:#e8d39a;font-size:clamp(22px,5vw,34px);letter-spacing:4px;text-shadow:0 0 22px rgba(190,150,70,.5)">O GRANDE GUARDIÃO</h2>
+    <div style="font-family:'Share Tech Mono',monospace;color:#bfe6ec;letter-spacing:2px;margin:14px 0 26px">Escolha a força do oponente</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+      <button class="btn ghost" onclick="startDuelGame(1)" style="margin:0">♟ Aprendiz</button>
+      <button class="btn ghost" onclick="startDuelGame(2)" style="margin:0">♞ Mestre</button>
+      <button class="btn ghost" onclick="startDuelGame(3)" style="margin:0">♛ Grão-Mestre</button>
+    </div>
+  </div>
+
+  <!-- DIÁLOGO -->
+  <div id="dialog" class="hidden">
+    <div class="who" id="dlgWho">GUARDIÃO</div>
+    <div class="txt" id="dlgTxt"></div>
+    <div class="go" id="dlgGo"><button onclick="dlgAdvance()">▸</button></div>
+  </div>
+
+  <div id="touch">
+    <button class="tbtn" onpointerdown="event.preventDefault(); if(typeof interact==='function') interact();" title="Interagir">E</button>
+    <button class="tbtn atk" onpointerdown="event.preventDefault(); if(typeof playerAttack==='function') playerAttack();" title="Atacar">⚔</button>
+  </div>
+  <div id="flash"></div>
+  <div id="snd" onclick="toggleSound()">♪ som: on</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// CODEX ETERNUM — Protótipo Fase 1: A Biblioteca dos Arquitetos
+// Mecânica central: GUARDIÃO DO TABULEIRO (xadrez de verdade)
+// ============================================================
+
+// ---------- ÁUDIO (atmosfera + chimes, sintetizado) ----------
+let actx=null, soundOn=true, drone=null;
+function initAudio(){ if(actx) return; try{ actx=new (window.AudioContext||window.webkitAudioContext)(); startDrone(); }catch(e){} }
+function startDrone(){
+  if(!actx||drone) return;
+  drone={o1:actx.createOscillator(),o2:actx.createOscillator(),g:actx.createGain()};
+  drone.o1.type='sine'; drone.o1.frequency.value=55;     // grave ominoso
+  drone.o2.type='sine'; drone.o2.frequency.value=82.4;
+  drone.g.gain.value=0.0; drone.g.gain.linearRampToValueAtTime(0.06, actx.currentTime+3);
+  drone.o1.connect(drone.g); drone.o2.connect(drone.g); drone.g.connect(actx.destination);
+  drone.o1.start(); drone.o2.start();
+}
+function chime(freqs,dur,type,vol){ if(!actx||!soundOn) return; const now=actx.currentTime;
+  freqs.forEach((f,i)=>{ const o=actx.createOscillator(),g=actx.createGain(); o.type=type||'sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0,now+i*0.08); g.gain.linearRampToValueAtTime(vol||0.12,now+i*0.08+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,now+i*0.08+dur); o.connect(g); g.connect(actx.destination);
+    o.start(now+i*0.08); o.stop(now+i*0.08+dur+0.02); }); }
+const SFX={
+  glitch:()=>chime([180,140,200],0.12,'square',0.05),
+  move:()=>chime([320],0.08,'sine',0.08),
+  wrong:()=>chime([160,110],0.3,'sawtooth',0.09),
+  win:()=>chime([523,659,784,1046],0.5,'triangle',0.14),
+  reveal:()=>chime([130,196,261,392,523],0.7,'sine',0.12),
+};
+function toggleSound(){ soundOn=!soundOn; document.getElementById('snd').textContent='♪ som: '+(soundOn?'on':'off');
+  if(drone){ drone.g.gain.linearRampToValueAtTime(soundOn?0.06:0, actx.currentTime+0.4); } }
+
+// ---------- FUNDO ATMOSFÉRICO (canvas) ----------
+const bg=document.getElementById('bg'), bx=bg.getContext('2d');
+let W=innerWidth,H=innerHeight;
+function resize(){ W=innerWidth;H=innerHeight; bg.width=W;bg.height=H; buildMotes(); }
+addEventListener('resize',resize);
+let motes=[];
+function buildMotes(){ motes=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+0.3,vy:-(0.1+Math.random()*0.4),vx:(Math.random()-.5)*0.2,a:Math.random()*0.5+0.1})); }
+let boardGlow=0;   // intensidade do brilho do pedestal holográfico
+function drawGuardianChamber(t){
+  const g=bx.createRadialGradient(W/2,H*0.4,40,W/2,H*0.4,Math.max(W,H)*0.8);
+  g.addColorStop(0,'#0a1018'); g.addColorStop(1,'#020409'); bx.fillStyle=g; bx.fillRect(0,0,W,H);
+  // pilares antigos
+  bx.fillStyle='rgba(12,18,26,.9)'; bx.fillRect(0,0,W*0.12,H); bx.fillRect(W*0.88,0,W*0.12,H);
+  bx.fillStyle='rgba(70,100,120,.10)';
+  for(let y=50;y<H;y+=64){ bx.fillRect(W*0.035,y,W*0.05,4); bx.fillRect(W*0.915,y,W*0.05,4); }
+  // O GUARDIÃO: figura encapuzada sombria espreitando atrás do tabuleiro
+  const gx=W/2, eyeY=H*0.085, glitch=Math.random()>0.95?1.6:1, fl=(0.5+Math.abs(Math.sin(t/240))*0.3)*glitch;
+  const halo=bx.createRadialGradient(gx,eyeY,6,gx,eyeY,Math.min(W,H)*0.34);
+  halo.addColorStop(0,'rgba(60,170,195,'+(0.10*fl)+')'); halo.addColorStop(1,'rgba(0,0,0,0)');
+  bx.fillStyle=halo; bx.fillRect(0,0,W,H);
+  // manto + ombros largos descendo pelas laterais (atrás do tabuleiro)
+  bx.fillStyle='rgba(5,9,15,.95)';
+  bx.beginPath();
+  bx.moveTo(gx-W*0.34,H);
+  bx.quadraticCurveTo(gx-W*0.22,H*0.20,gx-52,H*0.12);
+  bx.quadraticCurveTo(gx,H*0.005,gx+52,H*0.12);
+  bx.quadraticCurveTo(gx+W*0.22,H*0.20,gx+W*0.34,H);
+  bx.closePath(); bx.fill();
+  bx.strokeStyle='rgba(80,160,180,'+(0.22*fl)+')'; bx.lineWidth=2;
+  bx.beginPath(); bx.moveTo(gx-52,H*0.12); bx.quadraticCurveTo(gx,H*0.005,gx+52,H*0.12); bx.stroke();
+  // abertura escura do capuz (rosto vazio) + olhos brilhando
+  bx.fillStyle='rgba(2,4,8,.96)'; bx.beginPath(); bx.ellipse(gx,eyeY+6,28,40,0,0,Math.PI*2); bx.fill();
+  bx.save(); bx.shadowColor='#5fd0e0'; bx.shadowBlur=16*fl; bx.fillStyle='rgba(155,238,250,'+(0.7+fl*0.3)+')';
+  bx.beginPath(); bx.arc(gx-11,eyeY,4.2,0,Math.PI*2); bx.fill();
+  bx.beginPath(); bx.arc(gx+11,eyeY,4.2,0,Math.PI*2); bx.fill(); bx.restore();
+  const fog=bx.createLinearGradient(0,H,0,H*0.66); fog.addColorStop(0,'rgba(20,42,52,.42)'); fog.addColorStop(1,'rgba(0,0,0,0)');
+  bx.fillStyle=fog; bx.fillRect(0,H*0.66,W,H*0.34);
+  motes.forEach(m=>{ m.y+=m.vy*0.5; m.x+=m.vx; if(m.y<-4){m.y=H+4;m.x=Math.random()*W;} bx.fillStyle='rgba(150,200,210,'+(m.a*0.4)+')'; bx.beginPath(); bx.arc(m.x,m.y,m.r,0,Math.PI*2); bx.fill(); });
+  const v=bx.createRadialGradient(W/2,H*0.46,H*0.4,W/2,H*0.46,H*0.96); v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,5,.72)');
+  bx.fillStyle=v; bx.fillRect(0,0,W,H);
+}
+function drawBG(t){
+  if(typeof mode!=='undefined' && mode==='explore'){ drawRoom(t); requestAnimationFrame(drawBG); return; }
+  if(typeof mode!=='undefined' && mode==='chess'){ drawGuardianChamber(t); requestAnimationFrame(drawBG); return; }
+  // base
+  const g=bx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0a0c12'); g.addColorStop(1,'#05060a');
+  bx.fillStyle=g; bx.fillRect(0,0,W,H);
+  // silhuetas de estantes (colunas)
+  bx.fillStyle='rgba(20,26,34,.6)';
+  const cols=Math.ceil(W/120);
+  for(let i=0;i<cols;i++){ const x=i*120+((i%2)*0); bx.fillRect(x,0,70,H); }
+  bx.fillStyle='rgba(8,10,16,.5)';
+  for(let i=0;i<cols;i++){ for(let y=40;y<H;y+=46){ bx.fillRect(i*120+6,y,58,3); } } // prateleiras
+  // feixe de luz central (do tabuleiro)
+  const cx=W/2, cy=H*0.46;
+  const shaft=bx.createRadialGradient(cx,cy,20,cx,cy,Math.max(W,H)*0.55);
+  shaft.addColorStop(0,'rgba(90,200,220,'+(0.10+boardGlow*0.18)+')'); shaft.addColorStop(1,'rgba(0,0,0,0)');
+  bx.fillStyle=shaft; bx.fillRect(0,0,W,H);
+  // poeira flutuando
+  motes.forEach(m=>{ m.y+=m.vy; m.x+=m.vx; if(m.y<-4){m.y=H+4;m.x=Math.random()*W;}
+    bx.fillStyle='rgba(200,220,210,'+(m.a*(0.5+boardGlow*0.5))+')'; bx.beginPath(); bx.arc(m.x,m.y,m.r,0,Math.PI*2); bx.fill(); });
+  if(boardGlow>0) boardGlow=Math.max(0, boardGlow-0.004);
+  requestAnimationFrame(drawBG);
+}
+resize(); requestAnimationFrame(drawBG);
+
+// ====================================================================
+// FASE DE EXPLORAÇÃO (andar pela biblioteca, achar o Guardião e a passagem)
+// ====================================================================
+let mode='title';
+const explorer={x:0,y:0,dir:'down',moving:false,step:0};
+let exKeys={}, exClick=null, guardianDone=false, doorOpen=false, nearObj=null, room=null, exHint=0;
+// CÂMARAS (cada uma: um Guardião/puzzle + inimigos)
+const CHAMBERS=[
+  { name:'I · Átrio dos Arquitetos', puzzle:0, enemies:2,
+    lore:[ {dx:0.26,dy:0.32,text:'Registro: "O xadrez nunca foi um jogo. Era a língua com que escondíamos a verdade."'},
+           {dx:0.74,dy:0.62,text:'Registro: "Cuidado com os Servos Corrompidos. A luz os fere; a hesitação os alimenta."'} ] },
+  { name:'II · Cripta dos Selos', puzzle:1, enemies:4,
+    lore:[ {dx:0.22,dy:0.30,text:'Registro: "Quem decifrar o Guardião herdará o que os Arquitetos protegeram."'},
+           {dx:0.76,dy:0.66,text:'Registro: "O sufocamento. O rei morre cercado pelos próprios servos."'} ] },
+  { name:'III · Sala do Trono', duel:true, enemies:3,
+    lore:[ {dx:0.24,dy:0.30,text:'Registro: "Aqui não há truques. Apenas mente contra mente, até o rei tombar."'},
+           {dx:0.76,dy:0.64,text:'Registro: "Derrote o GRANDE GUARDIÃO em uma partida completa e a última verdade será sua."'} ] },
+];
+let roomIdx=0, hp=5, maxHp=5, frags=0, enemies=[], atk=0, hurtT=0;
+let duelMode=false, duelDepth=2, duelTurn='w';
+function curPuzIdx(){ return CHAMBERS[roomIdx].puzzle; }
+function buildChamber(idx){
+  roomIdx=idx; guardianDone=false; doorOpen=false; const ch=CHAMBERS[idx];
+  room={
+    terminal:{x:W*0.5, y:H*0.42},
+    door:{x:W-70, y:H*0.5-60, w:50, h:120},
+    shelves:[ {x:W*0.16,y:H*0.20,w:130,h:22},{x:W*0.64,y:H*0.18,w:130,h:22},
+              {x:W*0.12,y:H*0.70,w:130,h:22},{x:W*0.66,y:H*0.72,w:130,h:22} ],
+    lore: ch.lore.map(l=>({x:W*l.dx,y:H*l.dy,read:false,text:l.text})),
+  };
+  explorer.x=W*0.5; explorer.y=H*0.86;
+  enemies=[];
+  for(let i=0;i<ch.enemies;i++) enemies.push({ x:140+Math.random()*(W-280), y:130+Math.random()*(H-280), hp:2, state:'patrol', vx:(Math.random()-.5), vy:(Math.random()-.5), t:Math.random()*90, dead:false });
+  mode='explore'; exHint=1;
+}
+function enterExplore(){ hp=maxHp; frags=0; buildChamber(0); }
+
+// ---------- COMBATE / INIMIGOS ----------
+function flashRed(){ const fl=document.getElementById('flash'); fl.style.background='#9a1018'; fl.style.transition='opacity .05s'; fl.style.opacity='0.42';
+  setTimeout(()=>{ fl.style.transition='opacity .5s'; fl.style.opacity='0'; setTimeout(()=>fl.style.background='#fff',520); },60); }
+function playerAttack(){ if(mode!=='explore'||atk>0) return; atk=0.32; SFX.move();
+  const dv={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[explorer.dir]||[0,1];
+  const hx=explorer.x+dv[0]*32, hy=explorer.y+dv[1]*32;
+  enemies.forEach(e=>{ if(e.dead)return; if(Math.hypot(e.x-hx,e.y-hy)<36){ e.hp--; e.x+=dv[0]*16; e.y+=dv[1]*16; if(e.hp<=0){ e.dead=true; SFX.glitch(); } } });
+}
+function playerDown(){ mode='dead'; guardianSay(['Você caiu. O Arquivo o reconstrói...'], ()=>{ hp=maxHp; buildChamber(roomIdx); }); }
+function updateEnemies(){
+  if(atk>0) atk-=0.016; if(hurtT>0) hurtT-=0.016;
+  enemies.forEach(e=>{ if(e.dead)return;
+    const dx=explorer.x-e.x, dy=explorer.y-e.y, d=Math.hypot(dx,dy)||1;
+    if(d<210){ e.state='chase'; e.vx=dx/d; e.vy=dy/d; }
+    else { e.t--; if(e.t<0){ e.t=60+Math.random()*60; e.vx=Math.random()-.5; e.vy=Math.random()-.5; } e.state='patrol'; }
+    const sp=e.state==='chase'?1.55:0.55;
+    e.x=Math.max(20,Math.min(W-20,e.x+e.vx*sp)); e.y=Math.max(60,Math.min(H-20,e.y+e.vy*sp));
+    if(d<22 && hurtT<=0){ hp--; hurtT=1.2; SFX.wrong(); flashRed(); explorer.x-=dx/d*32; explorer.y-=dy/d*32; if(hp<=0) playerDown(); }
+  });
+}
+function drawEnemies(t){ enemies.forEach(e=>{ if(e.dead)return; const pul=0.5+Math.sin(t/150+e.x)*0.5;
+  bx.save(); bx.translate(e.x,e.y);
+  bx.fillStyle='rgba(0,0,0,.45)'; bx.beginPath(); bx.ellipse(0,9,11,3,0,0,Math.PI*2); bx.fill();
+  bx.fillStyle=e.state==='chase'?'#3a1218':'#221820'; bx.beginPath(); bx.moveTo(0,-13); bx.lineTo(10,9); bx.lineTo(-10,9); bx.closePath(); bx.fill();
+  bx.fillStyle='rgba(255,'+(e.state==='chase'?30:70)+',36,'+(0.7+pul*0.3)+')'; bx.shadowColor='#ff3020'; bx.shadowBlur=14;
+  bx.beginPath(); bx.arc(0,-2,3.2,0,Math.PI*2); bx.fill(); bx.shadowBlur=0;
+  if(e.hp<2){ bx.fillStyle='rgba(255,80,80,.85)'; bx.fillRect(-9,-20,18*(e.hp/2),2.5); }
+  bx.restore(); }); }
+function drawHUD(){
+  bx.save(); bx.textAlign='left';
+  for(let i=0;i<maxHp;i++){ bx.fillStyle=i<hp?'#ff5a6a':'rgba(120,60,70,.35)'; bx.font='18px serif'; bx.fillText('♥', 16+i*21, 30); }
+  bx.fillStyle='#7faab2'; bx.font="11px 'Share Tech Mono',monospace"; bx.fillText('CÂMARA '+CHAMBERS[roomIdx].name, 16, 50);
+  const alive=enemies.filter(e=>!e.dead).length;
+  if(alive>0){ bx.fillStyle='#c8736a'; bx.fillText('Servos corrompidos: '+alive, 16, 66); }
+  bx.restore();
+}
+
+function hitShelf(x,y){ if(!room)return false; return room.shelves.some(s=>x>s.x-10&&x<s.x+s.w+10&&y>s.y-10&&y<s.y+s.h+14); }
+function updateExplorer(){
+  let dx=0,dy=0;
+  if(exKeys['w']||exKeys['arrowup'])dy=-1; if(exKeys['s']||exKeys['arrowdown'])dy=1;
+  if(exKeys['a']||exKeys['arrowleft'])dx=-1; if(exKeys['d']||exKeys['arrowright'])dx=1;
+  if(dx||dy) exClick=null;
+  if(exClick){ const tx=exClick.x-explorer.x, ty=exClick.y-explorer.y; const L=Math.hypot(tx,ty);
+    if(L<6){ exClick=null; } else { dx=tx/L; dy=ty/L; } }
+  explorer.moving=!!(dx||dy);
+  if(explorer.moving){ const L=Math.hypot(dx,dy)||1, sp=3.4;
+    let nx=Math.max(22,Math.min(W-22,explorer.x+dx/L*sp)), ny=Math.max(40,Math.min(H-22,explorer.y+dy/L*sp));
+    if(!hitShelf(nx,explorer.y)) explorer.x=nx;
+    if(!hitShelf(explorer.x,ny)) explorer.y=ny;
+    explorer.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');
+    explorer.step+=0.22;
+  }
+}
+function findNear(){
+  if(!room) return null; const ex=explorer.x, ey=explorer.y;
+  if(!guardianDone && Math.hypot(ex-room.terminal.x,ey-room.terminal.y)<72) return {type:'terminal',label:'Despertar o Guardião do Tabuleiro'};
+  if(doorOpen){ const d=room.door; if(Math.hypot(ex-(d.x+d.w/2),ey-(d.y+d.h/2))<86) return {type:'door',label:'Atravessar a passagem'}; }
+  for(const l of room.lore){ if(!l.read && Math.hypot(ex-l.x,ey-l.y)<42) return {type:'lore',label:'Ler registro antigo',ref:l}; }
+  return null;
+}
+function interact(){
+  if(mode!=='explore'||!nearObj) return;
+  if(nearObj.type==='terminal'){ mode='chess'; if(CHAMBERS[roomIdx].duel) startDuel(); else beginPuzzle(); }
+  else if(nearObj.type==='door'){
+    if(roomIdx < CHAMBERS.length-1){ mode='dead'; SFX.glitch(); guardianSay(['Você desce mais fundo nos Arquivos...'], ()=>buildChamber(roomIdx+1)); }
+    else finalReveal();
+  }
+  else if(nearObj.type==='lore'){ nearObj.ref.read=true; SFX.glitch(); guardianSay([nearObj.ref.text]); }
+}
+function drawDoor(t){
+  const d=room.door;
+  if(doorOpen){ const g=bx.createLinearGradient(d.x-40,0,d.x+d.w,0); g.addColorStop(0,'rgba(255,240,200,0)'); g.addColorStop(1,'rgba(255,244,210,.6)');
+    bx.fillStyle=g; bx.fillRect(d.x-40,d.y-24,d.w+40,d.h+48); bx.fillStyle='rgba(255,250,235,.9)'; bx.fillRect(d.x,d.y,d.w,d.h);
+  } else { bx.fillStyle='#090c11'; bx.fillRect(d.x,d.y,d.w,d.h);
+    bx.fillStyle='rgba(95,200,220,'+(0.4+Math.sin(t/500)*0.2)+')'; bx.font='30px serif'; bx.textAlign='center'; bx.fillText('♛',d.x+d.w/2,d.y+d.h/2+11); }
+  bx.strokeStyle='#2a3340'; bx.lineWidth=6; bx.strokeRect(d.x-6,d.y-6,d.w+12,d.h+12);
+}
+function drawTerminal(t){
+  const x=room.terminal.x, y=room.terminal.y, pul=0.6+Math.sin(t/420)*0.4;
+  bx.fillStyle='rgba(0,0,0,.4)'; bx.beginPath(); bx.ellipse(x,y+34,32,9,0,0,Math.PI*2); bx.fill();
+  bx.fillStyle='#141c28'; bx.fillRect(x-18,y+6,36,30); bx.fillStyle='#1d2838'; bx.fillRect(x-22,y+30,44,8);
+  bx.save(); bx.shadowColor='#5fd0e0'; bx.shadowBlur=22*pul; bx.translate(x,y-8+Math.sin(t/600)*3);
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){ bx.fillStyle=((r+c)%2)?'rgba(95,205,225,'+(0.34*pul)+')':'rgba(18,72,92,'+(0.34*pul)+')'; bx.fillRect(-24+c*12,-24+r*12,12,12); }
+  bx.strokeStyle='rgba(160,235,250,'+(0.7*pul)+')'; bx.lineWidth=1.5; bx.strokeRect(-24,-24,48,48); bx.restore();
+}
+function drawExplorer(t){
+  const x=explorer.x, y=explorer.y, bob=explorer.moving?Math.sin(explorer.step)*1.4:0;
+  bx.save(); bx.translate(x,y);
+  bx.fillStyle='rgba(0,0,0,.45)'; bx.beginPath(); bx.ellipse(0,10,9,3,0,0,Math.PI*2); bx.fill();
+  bx.fillStyle='#3a2f24'; bx.beginPath(); bx.moveTo(-8,10+bob); bx.lineTo(-5,-8+bob); bx.lineTo(5,-8+bob); bx.lineTo(8,10+bob); bx.closePath(); bx.fill();
+  bx.fillStyle='#4a3a2c'; bx.beginPath(); bx.arc(0,-10+bob,6,0,Math.PI*2); bx.fill();
+  bx.fillStyle='#120d08'; bx.beginPath(); bx.arc(0,-9+bob,3.4,0,Math.PI*2); bx.fill();
+  bx.fillStyle='#ffd27a'; bx.shadowColor='#ffb84d'; bx.shadowBlur=16; bx.beginPath(); bx.arc(9,3+bob,3,0,Math.PI*2); bx.fill(); bx.shadowBlur=0;
+  bx.restore();
+}
+function drawPrompt(label){
+  bx.save(); bx.font="bold 15px 'Share Tech Mono',monospace"; bx.textAlign='center';
+  const txt='[E] '+label, w=bx.measureText(txt).width+30, px=W/2, py=H-58;
+  bx.fillStyle='rgba(8,14,20,.9)'; bx.strokeStyle='rgba(255,210,62,.7)'; bx.lineWidth=1.5;
+  bx.beginPath(); bx.roundRect(px-w/2,py-19,w,32,8); bx.fill(); bx.stroke();
+  bx.fillStyle='#ffe8a8'; bx.fillText(txt,px,py+2); bx.restore();
+}
+// objetivo atual + guia (seta + rótulo + banner) — pra ninguém ficar perdido
+function objectiveTarget(){
+  if(!guardianDone) return {x:room.terminal.x, y:room.terminal.y, label:'GUARDIÃO DO TABULEIRO', goal:'Vá até o GUARDIÃO (centro) e aperte [E]'};
+  if(doorOpen) return {x:room.door.x+room.door.w/2, y:room.door.y+room.door.h/2, label:'PASSAGEM ABERTA', goal:'Atravesse a PASSAGEM que se abriu ([E])'};
+  return null;
+}
+function drawGuide(t){
+  const o=objectiveTarget(); if(!o) return;
+  // banner de objetivo no topo
+  bx.save(); bx.textAlign='center'; bx.font="bold 14px 'Share Tech Mono',monospace";
+  const bt='◈ OBJETIVO: '+o.goal+' ◈', bw=bx.measureText(bt).width+30;
+  bx.fillStyle='rgba(8,16,22,.85)'; bx.strokeStyle='rgba(95,200,220,.55)'; bx.lineWidth=1;
+  bx.beginPath(); bx.roundRect(W/2-bw/2,14,bw,32,8); bx.fill(); bx.stroke();
+  bx.fillStyle='#bfe6ec'; bx.fillText(bt,W/2,35); bx.restore();
+  // rótulo brilhando sobre o alvo
+  bx.save(); bx.textAlign='center'; bx.font="bold 13px 'Share Tech Mono',monospace";
+  bx.fillStyle='#ffd23e'; bx.shadowColor='#ffd23e'; bx.shadowBlur=12;
+  bx.fillText('▾ '+o.label, o.x, o.y-56+Math.sin(t/300)*3); bx.shadowBlur=0; bx.restore();
+  // anel pulsante no alvo
+  const pr=28+Math.sin(t/250)*5;
+  bx.strokeStyle='rgba(255,210,62,'+(0.5+Math.sin(t/250)*0.3)+')'; bx.lineWidth=2;
+  bx.beginPath(); bx.arc(o.x,o.y,pr,0,Math.PI*2); bx.stroke();
+  // seta perto do explorador apontando pro alvo (igual ao outro jogo)
+  const dist=Math.hypot(o.x-explorer.x,o.y-explorer.y);
+  if(dist>70){
+    const ang=Math.atan2(o.y-explorer.y,o.x-explorer.x);
+    const ax=explorer.x+Math.cos(ang)*44, ay=explorer.y+Math.sin(ang)*44;
+    bx.save(); bx.translate(ax,ay); bx.rotate(ang);
+    bx.fillStyle='rgba(255,210,62,.95)'; bx.shadowColor='#ffd23e'; bx.shadowBlur=10;
+    bx.beginPath(); bx.moveTo(12,0); bx.lineTo(-5,-7); bx.lineTo(-5,7); bx.closePath(); bx.fill();
+    bx.restore();
+  }
+}
+function drawRoom(t){
+  bx.fillStyle='#0a0d13'; bx.fillRect(0,0,W,H);
+  bx.strokeStyle='rgba(40,55,62,.13)'; bx.lineWidth=1;
+  for(let x=0;x<W;x+=48){bx.beginPath();bx.moveTo(x,0);bx.lineTo(x,H);bx.stroke();}
+  for(let y=0;y<H;y+=48){bx.beginPath();bx.moveTo(0,y);bx.lineTo(W,y);bx.stroke();}
+  room.shelves.forEach(s=>{ bx.fillStyle='#151b24'; bx.fillRect(s.x,s.y,s.w,s.h);
+    for(let k=s.x+4;k<s.x+s.w-4;k+=8){ bx.fillStyle='rgba(150,110,60,.3)'; bx.fillRect(k,s.y+3,5,s.h-6); } });
+  room.lore.forEach(l=>{ if(l.read)return; const pu=0.5+Math.sin(t/300)*0.5;
+    bx.fillStyle='rgba(120,205,225,'+(0.4+pu*0.4)+')'; bx.beginPath(); bx.arc(l.x,l.y,4.5+pu*2,0,Math.PI*2); bx.fill(); });
+  drawDoor(t); drawTerminal(t);
+  updateExplorer(); updateEnemies(); drawEnemies(t); drawExplorer(t);
+  // brilho do ataque
+  if(atk>0){ const dv={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]}[explorer.dir]||[0,1];
+    bx.save(); bx.globalAlpha=atk*2; bx.strokeStyle='rgba(255,230,150,.9)'; bx.lineWidth=3;
+    bx.beginPath(); bx.arc(explorer.x+dv[0]*20,explorer.y+dv[1]*20,20,0,Math.PI*2); bx.stroke(); bx.restore(); }
+  // escuridão da lanterna
+  // vinheta suave + calor da lanterna (clareei pra dar pra VER a sala toda)
+  const lr=Math.max(W,H)*0.66;
+  const dk=bx.createRadialGradient(explorer.x,explorer.y-6,90,explorer.x,explorer.y-6,lr);
+  dk.addColorStop(0,'rgba(0,0,0,0)'); dk.addColorStop(.55,'rgba(4,7,12,.15)'); dk.addColorStop(1,'rgba(3,5,9,.6)');
+  bx.fillStyle=dk; bx.fillRect(0,0,W,H);
+  nearObj=findNear(); if(nearObj) drawPrompt(nearObj.label);
+  drawGuide(t); drawHUD();
+  if(exHint>0){ bx.save(); bx.globalAlpha=Math.min(1,exHint); bx.font="12px 'Share Tech Mono',monospace"; bx.textAlign='center'; bx.fillStyle='#7faab2';
+    bx.fillText('WASD/CLIQUE andar  ·  ESPAÇO atacar  ·  [E] interagir', W/2, H-26); bx.restore(); exHint-=0.002; }
+}
+addEventListener('keydown',e=>{ if(mode==='explore'){ const k=e.key.toLowerCase(); exKeys[k]=true;
+  if(k==='e'||e.key==='Enter') interact();
+  if(e.key===' '||k==='spacebar'){ e.preventDefault(); playerAttack(); } } });
+addEventListener('keyup',e=>{ exKeys[e.key.toLowerCase()]=false; });
+bg.addEventListener('pointerdown',e=>{ if(mode!=='explore')return; const r=bg.getBoundingClientRect(); exClick={ x:(e.clientX-r.left)*(W/r.width), y:(e.clientY-r.top)*(H/r.height) }; });
+
+// ====================================================================
+// MOTOR DE XADREZ (legalidade completa + detecção de xeque-mate)
+// ====================================================================
+let B=[];            // B[r][c] = {t,c} | null   (r0 = rank8 topo, c0 = file a)
+function sq(alg){ const c=alg.charCodeAt(0)-97; const r=8-parseInt(alg[1]); return [r,c]; }
+function setup(map){
+  B=Array.from({length:8},()=>Array(8).fill(null));
+  for(const k in map){ const [r,c]=sq(k); const code=map[k]; B[r][c]={c:code[0]==='w'?'w':'b', t:code[1].toLowerCase()}; }
+}
+const inb=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+function kingPos(col,bd){ bd=bd||B; for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=bd[r][c]; if(p&&p.t==='k'&&p.c===col)return[r,c];} return null; }
+// casa (r,c) é atacada por 'by'?
+function attacked(r,c,by,bd){ bd=bd||B;
+  // peão
+  const dir = by==='w' ? 1 : -1;   // peão branco ataca pra cima (r diminui) → atacante está em r+1
+  for(const dc of [-1,1]){ const pr=r+dir, pc=c+dc; if(inb(pr,pc)){const p=bd[pr][pc]; if(p&&p.c===by&&p.t==='p')return true;} }
+  // cavalo
+  for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){ const pr=r+dr,pc=c+dc; if(inb(pr,pc)){const p=bd[pr][pc]; if(p&&p.c===by&&p.t==='n')return true;} }
+  // rei
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc)continue; const pr=r+dr,pc=c+dc; if(inb(pr,pc)){const p=bd[pr][pc]; if(p&&p.c===by&&p.t==='k')return true;} }
+  // deslizantes: torre/dama (orto), bispo/dama (diag)
+  const ortho=[[-1,0],[1,0],[0,-1],[0,1]], diag=[[-1,-1],[-1,1],[1,-1],[1,1]];
+  for(const [dr,dc] of ortho){ let pr=r+dr,pc=c+dc; while(inb(pr,pc)){const p=bd[pr][pc]; if(p){ if(p.c===by&&(p.t==='r'||p.t==='q'))return true; break;} pr+=dr;pc+=dc;} }
+  for(const [dr,dc] of diag){ let pr=r+dr,pc=c+dc; while(inb(pr,pc)){const p=bd[pr][pc]; if(p){ if(p.c===by&&(p.t==='b'||p.t==='q'))return true; break;} pr+=dr;pc+=dc;} }
+  return false;
+}
+function inCheck(col,bd){ bd=bd||B; const k=kingPos(col,bd); if(!k)return false; return attacked(k[0],k[1], col==='w'?'b':'w', bd); }
+// movimentos pseudo-legais de uma peça
+function pseudo(r,c,bd){ bd=bd||B; const p=bd[r][c]; if(!p)return[]; const mv=[]; const me=p.c, opp=me==='w'?'b':'w';
+  const add=(tr,tc)=>{ if(!inb(tr,tc))return false; const q=bd[tr][tc]; if(q&&q.c===me)return false; mv.push([tr,tc]); return !q; };
+  if(p.t==='p'){ const dir=me==='w'?-1:1; const start=me==='w'?6:1;
+    if(inb(r+dir,c)&&!bd[r+dir][c]){ mv.push([r+dir,c]); if(r===start&&!bd[r+2*dir][c]) mv.push([r+2*dir,c]); }
+    for(const dc of [-1,1]){ const tr=r+dir,tc=c+dc; if(inb(tr,tc)){const q=bd[tr][tc]; if(q&&q.c===opp)mv.push([tr,tc]);} }
+  } else if(p.t==='n'){ for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) add(r+dr,c+dc);
+  } else if(p.t==='k'){ for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ if(dr||dc) add(r+dr,c+dc); }
+  } else { const dirs = p.t==='r'?[[-1,0],[1,0],[0,-1],[0,1]] : p.t==='b'?[[-1,-1],[-1,1],[1,-1],[1,1]] : [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+    for(const [dr,dc] of dirs){ let tr=r+dr,tc=c+dc; while(add(tr,tc)){ tr+=dr;tc+=dc; } } }
+  return mv;
+}
+function cloneB(bd){ return bd.map(row=>row.map(p=>p?{...p}:null)); }
+// movimentos LEGAIS (não deixam o próprio rei em xeque)
+function legal(r,c,bd){ bd=bd||B; const p=bd[r][c]; if(!p)return[]; return pseudo(r,c,bd).filter(([tr,tc])=>{ const nb=cloneB(bd); nb[tr][tc]=nb[r][c]; nb[r][c]=null; return !inCheck(p.c,nb); }); }
+function allLegal(col,bd){ bd=bd||B; const out=[]; for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=bd[r][c]; if(p&&p.c===col) for(const m of legal(r,c,bd)) out.push([r,c,m[0],m[1]]); } return out; }
+function isMate(col,bd){ bd=bd||B; return inCheck(col,bd) && allLegal(col,bd).length===0; }
+
+// ====================================================================
+// IA DO GUARDIÃO (minimax + alfa-beta) — joga uma PARTIDA completa
+// ====================================================================
+const PVAL={p:100,n:320,b:330,r:500,q:900,k:20000};
+function evalBoard(bd){ let s=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){ const p=bd[r][c]; if(!p)continue;
+    let v=PVAL[p.t]; const cb=(3.5-Math.abs(3.5-c))+(3.5-Math.abs(3.5-r));   // bônus de centro
+    v+=cb*(p.t==='p'?2:p.t==='n'?4:p.t==='b'?2:1);
+    s += p.c==='w'? v : -v;
+  } return s; }
+function applyTo(bd,m){ const nb=cloneB(bd); nb[m[2]][m[3]]=nb[m[0]][m[1]]; nb[m[0]][m[1]]=null;
+  const q=nb[m[2]][m[3]]; if(q.t==='p'&&(m[2]===0||m[2]===7)) q.t='q'; return nb; }   // promoção auto = dama
+function minimax(bd,depth,alpha,beta,maxWhite){
+  if(depth<=0) return evalBoard(bd);
+  const col=maxWhite?'w':'b', moves=allLegal(col,bd);
+  if(!moves.length) return inCheck(col,bd)?(maxWhite?-1e8-depth:1e8+depth):0;
+  if(maxWhite){ let v=-1e9; for(const m of moves){ v=Math.max(v,minimax(applyTo(bd,m),depth-1,alpha,beta,false)); alpha=Math.max(alpha,v); if(beta<=alpha)break; } return v; }
+  else { let v=1e9; for(const m of moves){ v=Math.min(v,minimax(applyTo(bd,m),depth-1,alpha,beta,true)); beta=Math.min(beta,v); if(beta<=alpha)break; } return v; }
+}
+function aiMove(color,depth){
+  const moves=allLegal(color,B); if(!moves.length)return null;
+  for(let i=moves.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [moves[i],moves[j]]=[moves[j],moves[i]]; } // variedade
+  let best=moves[0], bs=color==='w'?-1e18:1e18;
+  for(const m of moves){ const sc=minimax(applyTo(B,m),depth-1,-1e18,1e18,color!=='w');
+    if(color==='w'? sc>bs : sc<bs){ bs=sc; best=m; } }
+  return best;
+}
+
+// ====================================================================
+// OS DESAFIOS DO GUARDIÃO (mate em 1, padrões clássicos)
+// ====================================================================
+const PUZZLES=[
+  {
+    name:'Primeiro Selo · A Fileira Final',
+    pieces:{ 'g1':'wK','e1':'wR','g8':'bK','f7':'bP','g7':'bP','h7':'bP' },
+    solve:{from:'e1',to:'e8'},
+    hint:'BRANCAS jogam. O rei inimigo está preso na própria fileira. Encontre o xeque-mate em UM lance.',
+    intro:['Eu sou a memória dos Arquitetos.','Para passar, prove que sua mente conhece o padrão.','Sele o rei na fileira final. Um único lance.'],
+    win:'O padrão da fileira final. Os antigos o chamavam de "o primeiro selo".'
+  },
+  {
+    name:'Segundo Selo · O Sufocamento',
+    pieces:{ 'a1':'wK','g5':'wN','h8':'bK','g8':'bR','g7':'bP','h7':'bP' },
+    solve:{from:'g5',to:'f7'},
+    hint:'BRANCAS jogam. O rei inimigo está cercado pelas próprias peças. Só o cavalo alcança. Mate em UM.',
+    intro:['Mais fundo, então.','Aqui o rei é prisioneiro dos seus próprios servos.','Apenas o cavaleiro pode tocá-lo. O mate sufocante.'],
+    win:'O mate sufocante. Conhecimento que os Arquitetos guardaram a sete chaves.'
+  },
+];
+let puzzleIdx=0, sel=null, legalNow=[], boardLocked=true, lastMove=null;
+
+const GLYPH={ wk:'♚',wq:'♛',wr:'♜',wb:'♝',wn:'♞',wp:'♟',
+              bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟' };
+
+// ====================================================================
+// TABULEIRO 3D (Three.js) — peças 3D, perspectiva, luz dourada
+// ====================================================================
+let TH={ready:false};
+function init3D(){
+  if(TH.ready || typeof THREE==='undefined') return;
+  const cont=document.getElementById('board3d');
+  const ren=new THREE.WebGLRenderer({antialias:true,alpha:true}); ren.setSize(600,600,false);
+  ren.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); ren.shadowMap.enabled=true; cont.appendChild(ren.domElement);
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(35,1,0.1,100); cam.position.set(0,11.8,8.4); cam.lookAt(0,0,-0.2);
+  scene.add(new THREE.HemisphereLight(0xccd6ec,0x3a2a18,0.9));   // luz suave e uniforme
+  scene.add(new THREE.AmbientLight(0x6a6048,0.3));
+  const key=new THREE.DirectionalLight(0xfff2da,0.8); key.position.set(4,12,5); key.castShadow=true;
+  key.shadow.mapSize.set(2048,2048); key.shadow.camera.left=-7; key.shadow.camera.right=7; key.shadow.camera.top=7; key.shadow.camera.bottom=-7; key.shadow.bias=-0.0006; scene.add(key);
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(9.4,0.5,9.4), new THREE.MeshStandardMaterial({color:0x241a0e,metalness:0.4,roughness:0.6}));
+  frame.position.y=-0.34; frame.receiveShadow=true; scene.add(frame);
+  const rim=new THREE.Mesh(new THREE.BoxGeometry(8.5,0.6,8.5), new THREE.MeshStandardMaterial({color:0xb8923c,metalness:0.75,roughness:0.32}));
+  rim.position.y=-0.31; scene.add(rim);
+  const tiles=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const m=new THREE.MeshStandardMaterial({color:(r+c)%2?0x5c4626:0xe4d4a4, roughness:0.62, emissive:0x000000});
+    const t=new THREE.Mesh(new THREE.BoxGeometry(0.98,0.14,0.98), m);
+    t.position.set(c-3.5,0,r-3.5); t.receiveShadow=true; t.userData={r,c}; scene.add(t); tiles[r*8+c]=t;
+  }
+  TH={ready:true,ren,scene,cam,tiles,pieces:[],
+      whiteMat:new THREE.MeshStandardMaterial({color:0xf4ead0,metalness:0.08,roughness:0.52}),
+      blackMat:new THREE.MeshStandardMaterial({color:0x412f1d,metalness:0.12,roughness:0.5})};
+  const ray=new THREE.Raycaster(), mo=new THREE.Vector2();
+  ren.domElement.addEventListener('pointerdown',ev=>{ if(boardLocked)return;
+    const b=ren.domElement.getBoundingClientRect();
+    mo.x=((ev.clientX-b.left)/b.width)*2-1; mo.y=-((ev.clientY-b.top)/b.height)*2+1;
+    ray.setFromCamera(mo,cam); const h=ray.intersectObjects(TH.tiles)[0];
+    if(h) clickSq(h.object.userData.r,h.object.userData.c); });
+  (function loop(){ if(TH.ready){ TH.ren.render(TH.scene,TH.cam); } requestAnimationFrame(loop); })();
+}
+const LATHE={
+  p:[[0,0],[0.34,0.02],[0.3,0.1],[0.16,0.22],[0.2,0.30],[0.16,0.40],[0.24,0.46],[0.06,0.5]],
+  r:[[0,0],[0.36,0.02],[0.30,0.12],[0.24,0.5],[0.32,0.56],[0.32,0.66],[0.06,0.66]],
+  b:[[0,0],[0.34,0.02],[0.28,0.12],[0.15,0.5],[0.22,0.6],[0.12,0.72],[0.06,0.82]],
+  q:[[0,0],[0.38,0.02],[0.30,0.14],[0.16,0.6],[0.28,0.72],[0.32,0.82],[0.06,0.88]],
+  k:[[0,0],[0.38,0.02],[0.30,0.14],[0.16,0.66],[0.28,0.8],[0.30,0.9],[0.08,0.96]],
+};
+function makePiece3D(p){
+  const mat=(p.c==='w'?TH.whiteMat:TH.blackMat);
+  let mesh;
+  if(p.t==='n'){
+    mesh=new THREE.Group();
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,0.14,20),mat); base.position.y=0.07; mesh.add(base);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.24,0.42,16),mat); neck.position.y=0.35; mesh.add(neck);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.3,0.22),mat); head.position.set(0.07,0.6,0); head.rotation.z=-0.5; mesh.add(head);
+    const snout=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.18,0.2),mat); snout.position.set(0.27,0.52,0); snout.rotation.z=-0.5; mesh.add(snout);
+  } else {
+    const pts=(LATHE[p.t]||LATHE.p).map(([x,y])=>new THREE.Vector2(Math.max(0.001,x),y));
+    mesh=new THREE.Mesh(new THREE.LatheGeometry(pts,24),mat);
+    if(p.t==='k'){ const cr=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.22,0.08),mat); cr.position.y=1.04; mesh.add(cr);
+      const cr2=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.08,0.08),mat); cr2.position.y=1.0; mesh.add(cr2); }
+  }
+  mesh.traverse(o=>{ o.castShadow=true; });
+  return mesh;
+}
+function render3D(){
+  if(!TH.ready) return;
+  TH.pieces.forEach(m=>TH.scene.remove(m)); TH.pieces=[];
+  const chkW=inCheck('w')?kingPos('w'):null, chkB=inCheck('b')?kingPos('b'):null;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){ const t=TH.tiles[r*8+c]; let emis=0x000000,ei=0;
+    if(lastMove && ((lastMove[0]===r&&lastMove[1]===c)||(lastMove[2]===r&&lastMove[3]===c))){ emis=0xffce3e; ei=0.28; }
+    if(legalNow.some(m=>m[0]===r&&m[1]===c)){ emis=0x5fd0a0; ei=0.5; }
+    if(sel&&sel[0]===r&&sel[1]===c){ emis=0xffd23e; ei=0.6; }
+    if((chkW&&chkW[0]===r&&chkW[1]===c)||(chkB&&chkB[0]===r&&chkB[1]===c)){ emis=0xff3020; ei=0.7; }
+    t.material.emissive.setHex(emis); t.material.emissiveIntensity=ei;
+  }
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){ const p=B[r][c]; if(!p)continue;
+    const m=makePiece3D(p); m.position.set(c-3.5,0.07,r-3.5); if(p.t==='n'&&p.c==='b') m.rotation.y=Math.PI;
+    TH.scene.add(m); TH.pieces.push(m); }
+}
+const FILES='abcdefgh';
+function renderBoard(){
+  const el=document.getElementById('board'); el.innerHTML='';
+  const chkW=inCheck('w')?kingPos('w'):null, chkB=inCheck('b')?kingPos('b'):null;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const d=document.createElement('div'); d.className='sq '+((r+c)%2?'dark':'lite');
+    d.dataset.r=r; d.dataset.c=c;
+    if(lastMove && ((lastMove[0]===r&&lastMove[1]===c)||(lastMove[2]===r&&lastMove[3]===c))) d.classList.add('last');
+    if(sel&&sel[0]===r&&sel[1]===c) d.classList.add('sel');
+    if(legalNow.some(m=>m[0]===r&&m[1]===c)) d.classList.add(B[r][c]?'cap':'mv');
+    if(chkW&&chkW[0]===r&&chkW[1]===c) d.classList.add('chk');
+    if(chkB&&chkB[0]===r&&chkB[1]===c) d.classList.add('chk');
+    const p=B[r][c];
+    if(p){ const s=document.createElement('span'); s.className='pc '+p.c; s.textContent=GLYPH[p.c+p.t]; d.appendChild(s); }
+    // coordenadas de xadrez (a-h embaixo, 1-8 na lateral)
+    if(r===7){ const f=document.createElement('span'); f.className='coord file'; f.textContent=FILES[c]; d.appendChild(f); }
+    if(c===0){ const rk=document.createElement('span'); rk.className='coord rank'; rk.textContent=(8-r); d.appendChild(rk); }
+    d.onclick=()=>clickSq(r,c);
+    el.appendChild(d);
+  }
+  // VERSÃO 2D: usa o tabuleiro DOM premium (3D desativado)
+}
+function clickSq(r,c){
+  if(boardLocked) return;
+  const p=B[r][c];
+  // clicar num destino legal → mover
+  if(sel && legalNow.some(m=>m[0]===r&&m[1]===c)){ doMove(sel[0],sel[1],r,c); return; }
+  // selecionar peça branca (jogador)
+  if(p && p.c==='w'){ sel=[r,c]; legalNow=legal(r,c); SFX.move(); renderBoard(); }
+  else { sel=null; legalNow=[]; renderBoard(); }
+}
+function doMove(fr,fc,tr,tc){
+  const snap=cloneB(B);
+  B[tr][tc]=B[fr][fc]; B[fr][fc]=null; sel=null; legalNow=[];
+  { const mp=B[tr][tc]; if(mp.t==='p'&&(tr===0||tr===7)) mp.t='q'; }   // promoção auto
+  lastMove=[fr,fc,tr,tc]; renderBoard();
+  if(duelMode){ SFX.move(); duelAfterPlayer(); return; }
+  const pz=PUZZLES[curPuzIdx()];
+  const [sr,scc]=sq(pz.solve.from), [dr,dcc]=sq(pz.solve.to);
+  const correct = (fr===sr&&fc===scc&&tr===dr&&tc===dcc) && isMate('b');
+  if(correct){
+    boardLocked=true; SFX.win(); boardGlow=1;
+    document.getElementById('boardHint').textContent='✦ XEQUE-MATE. O selo reconhece sua mente. ✦';
+    setTimeout(()=>solvedPuzzle(), 1400);
+  } else if(isMate('b')){           // mate por outro caminho (aceita também!)
+    boardLocked=true; SFX.win(); boardGlow=1;
+    document.getElementById('boardHint').textContent='✦ XEQUE-MATE. O selo se rompe. ✦';
+    setTimeout(()=>solvedPuzzle(), 1400);
+  } else {
+    // não é mate → o Guardião restaura o tabuleiro
+    SFX.wrong();
+    document.getElementById('boardHint').textContent='✕ O selo exige o XEQUE-MATE exato. O tabuleiro se restaura...';
+    setTimeout(()=>{ B=snap; renderBoard(); document.getElementById('boardHint').textContent=PUZZLES[curPuzIdx()].hint; }, 1100);
+  }
+}
+
+// ====================================================================
+// FLUXO DO JOGO
+// ====================================================================
+function show(id){ document.getElementById(id).classList.remove('hidden'); }
+function hide(id){ document.getElementById(id).classList.add('hidden'); }
+
+const INTRO=[
+  'Ano desconhecido. A civilização dos Arquitetos desapareceu sem deixar rastro.',
+  'O conhecimento deles foi selado nos Arquivos Eternos: bibliotecas vivas, guardadas por máquinas que pensam em xadrez.',
+  'Você é um explorador. Diante de você, a Biblioteca dos Arquitetos. No centro, um tabuleiro de luz desperta...',
+];
+let introI=0;
+function startIntro(){ initAudio(); hide('title'); show('intro'); introI=0; typeInto('introTxt', INTRO[0]); }
+function introNext(){ introI++; if(introI<INTRO.length){ typeInto('introTxt', INTRO[introI]); }
+  else { hide('intro'); enterExplore(); } }
+
+// efeito de digitação
+function typeInto(id,txt,cb){ const el=document.getElementById(id); el.textContent=''; let i=0;
+  clearInterval(el._tw); el._tw=setInterval(()=>{ el.textContent=txt.slice(0,++i); if(i>=txt.length){ clearInterval(el._tw); if(cb)cb(); } }, 26); }
+
+// diálogo do Guardião (fila de falas)
+let dlgQueue=[], dlgCb=null;
+function guardianSay(lines,cb){ dlgQueue=lines.slice(); dlgCb=cb; show('dialog'); nextDlg(); }
+function nextDlg(){ if(!dlgQueue.length){ hide('dialog'); const f=dlgCb; dlgCb=null; if(f)f(); return; }
+  const line=dlgQueue.shift(); SFX.glitch(); typeInto('dlgTxt', line); }
+function dlgAdvance(){ const el=document.getElementById('dlgTxt'); nextDlg(); }
+window.dlgAdvance=dlgAdvance;
+
+// ---------- DUELO COMPLETO CONTRA A IA (Grande Guardião) ----------
+function setupStart(){
+  setup({ a8:'br',b8:'bn',c8:'bb',d8:'bq',e8:'bk',f8:'bb',g8:'bn',h8:'br',
+    a7:'bp',b7:'bp',c7:'bp',d7:'bp',e7:'bp',f7:'bp',g7:'bp',h7:'bp',
+    a1:'wr',b1:'wn',c1:'wb',d1:'wq',e1:'wk',f1:'wb',g1:'wn',h1:'wr',
+    a2:'wp',b2:'wp',c2:'wp',d2:'wp',e2:'wp',f2:'wp',g2:'wp',h2:'wp' });
+}
+function startDuel(){
+  guardianSay(['Eu sou o GRANDE GUARDIÃO.','Aqui não há truques. Apenas uma partida, do início ao fim.','Escolha minha força... e me derrote.'],
+    ()=>{ document.getElementById('difSel').classList.remove('hidden'); });
+}
+window.startDuelGame=function(depth){
+  document.getElementById('difSel').classList.add('hidden');
+  duelMode=true; duelDepth=depth; setupStart(); sel=null; legalNow=[]; boardLocked=false; boardGlow=1; lastMove=null;
+  document.getElementById('boardTitle').textContent='⚔ GRANDE GUARDIÃO · Duelo ('+({1:'Aprendiz',2:'Mestre',3:'Grão-Mestre'}[depth])+')';
+  document.getElementById('board').innerHTML='';
+  document.getElementById('boardWrap').style.display='flex';
+  renderBoard();
+  document.getElementById('boardHint').textContent='Você é as BRANCAS (peças claras). Mova e dê XEQUE-MATE no Guardião.';
+};
+function duelAfterPlayer(){
+  if(isMate('b')){ duelEnd('win'); return; }
+  if(allLegal('b',B).length===0){ duelEnd('draw'); return; }
+  boardLocked=true; document.getElementById('boardHint').textContent='⏳ O Grande Guardião pensa...';
+  setTimeout(()=>{
+    const m=aiMove('b',duelDepth);
+    if(m){ B[m[2]][m[3]]=B[m[0]][m[1]]; B[m[0]][m[1]]=null; const mp=B[m[2]][m[3]]; if(mp.t==='p'&&(m[2]===0||m[2]===7))mp.t='q'; lastMove=[m[0],m[1],m[2],m[3]]; renderBoard(); SFX.move(); }
+    if(isMate('w')){ duelEnd('lose'); return; }
+    if(allLegal('w',B).length===0){ duelEnd('draw'); return; }
+    boardLocked=false;
+    document.getElementById('boardHint').textContent = inCheck('w')?'⚠ XEQUE! Proteja seu rei.':'Sua vez (BRANCAS). Derrote o Guardião.';
+  }, 220);
+}
+function duelEnd(r){
+  boardLocked=true; duelMode=false;
+  document.getElementById('boardWrap').style.display='none';
+  if(r==='win'){ SFX.win(); boardGlow=1; guardianSay(['XEQUE-MATE. Você me derrotou, explorador.','A última verdade é sua.'],
+      ()=>{ guardianDone=true; doorOpen=true; mode='explore'; }); }
+  else if(r==='lose'){ SFX.wrong(); guardianSay(['Xeque-mate. O Guardião prevalece.','Volte ao terminal quando sua mente estiver pronta.'], ()=>{ mode='explore'; }); }
+  else { guardianSay(['Empate. Nenhuma mente venceu a outra.','Tente novamente no terminal.'], ()=>{ mode='explore'; }); }
+}
+function beginPuzzle(){
+  const pz=PUZZLES[curPuzIdx()];
+  setup(pz.pieces); sel=null; legalNow=[]; boardLocked=true; lastMove=null;
+  document.getElementById('boardTitle').textContent=pz.name;
+  document.getElementById('boardHint').textContent='';
+  document.getElementById('board').innerHTML='';
+  boardGlow=1;
+  guardianSay(pz.intro, ()=>{
+    document.getElementById('boardWrap').style.display='flex';
+    renderBoard();
+    document.getElementById('boardHint').textContent=pz.hint;
+    boardLocked=false;
+  });
+}
+function solvedPuzzle(){
+  const pz=PUZZLES[curPuzIdx()];
+  document.getElementById('boardWrap').style.display='none';
+  guardianSay([pz.win, 'A passagem se abriu. Encontre-a, explorador.'], ()=>{
+    guardianDone=true; doorOpen=true; mode='explore';   // abre a porta DESTA câmara
+  });
+}
+function finalReveal(){
+  mode='reveal';
+  // flash + revelação do laboratório oculto
+  SFX.reveal(); boardGlow=1;
+  const fl=document.getElementById('flash');
+  fl.style.transition='opacity .15s'; fl.style.opacity='0.9';
+  setTimeout(()=>{ fl.style.transition='opacity 1.4s'; fl.style.opacity='0'; }, 160);
+  setTimeout(()=>{
+    show('reveal');
+    document.getElementById('revealTitle').textContent='A PAREDE SE ABRE';
+    typeInto('revealLore','Os selos cedem. Uma parede de pedra desliza, e a luz invade um laboratório esquecido por milênios. Sobre a bancada, uma tecnologia proibida pulsa devagar, esperando. Os registros sussurram: o xadrez nunca foi um jogo. Era a língua com que os Arquitetos escondiam a verdade.');
+    document.getElementById('revealTag').textContent='Fim da Fase 1 · A Biblioteca dos Arquitetos — continua...';
+  }, 600);
+}
+window.startIntro=startIntro; window.introNext=introNext; window.toggleSound=toggleSound;
+</script>
+</body>
+</html>
