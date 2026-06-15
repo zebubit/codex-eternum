@@ -105,7 +105,7 @@
     <div id="board3d"></div>
     <div id="board"></div>
     <div id="boardHint"></div>
-    <button class="btn ghost" id="giveUpBtn" onclick="giveUp()" style="margin-top:4px;font-size:11px;letter-spacing:1px;opacity:.7">↩ Recuar do tabuleiro</button>
+    <button class="btn ghost" id="giveUpBtn" onclick="giveUp()" style="margin-top:10px;font-size:13px;letter-spacing:1px;border-color:#a85a4a;color:#ffb3a0">↩ Desistir / Recuar do tabuleiro</button>
   </div>
 
   <!-- REVELAÇÃO -->
@@ -242,6 +242,7 @@ function drawGuardianChamber(t){
   bx.fillStyle=v; bx.fillRect(0,0,W,H);
 }
 function drawBG(t){
+  const _tc=document.getElementById('touch'); if(_tc) _tc.style.display=(typeof mode!=='undefined'&&mode==='explore')?'flex':'none';
   if(typeof mode!=='undefined' && mode==='explore'){ drawRoom(t); requestAnimationFrame(drawBG); return; }
   if(typeof mode!=='undefined' && mode==='chess'){ drawGuardianChamber(t); requestAnimationFrame(drawBG); return; }
   // base
