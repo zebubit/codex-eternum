@@ -105,6 +105,7 @@
     <div id="board3d"></div>
     <div id="board"></div>
     <div id="boardHint"></div>
+    <button class="btn ghost" id="giveUpBtn" onclick="giveUp()" style="margin-top:4px;font-size:11px;letter-spacing:1px;opacity:.7">↩ Recuar do tabuleiro</button>
   </div>
 
   <!-- REVELAÇÃO -->
@@ -113,6 +114,13 @@
     <div class="lore" id="revealLore"></div>
     <div class="tag" id="revealTag"></div>
     <button class="btn" id="revealBtn" onclick="location.reload()" style="margin-top:34px">jogar de novo</button>
+  </div>
+
+  <!-- ESCOLHA DO FINAL -->
+  <div id="ending" class="layer hidden" style="z-index:24">
+    <h2 id="endTitle" style="font-family:'Cinzel',serif;font-weight:900;color:#e8d39a;letter-spacing:3px;text-align:center;text-shadow:0 0 22px rgba(190,150,70,.5)"></h2>
+    <div class="lore" id="endText" style="max-width:640px;text-align:center"></div>
+    <div id="endChoices" style="display:flex;flex-direction:column;gap:12px;align-items:center;margin-top:28px"></div>
   </div>
 
   <!-- ESCOLHA DE DIFICULDADE (duelo) -->
@@ -268,15 +276,28 @@ let exKeys={}, exClick=null, guardianDone=false, doorOpen=false, nearObj=null, r
 const CHAMBERS=[
   { name:'I · Átrio dos Arquitetos', puzzle:0, enemies:2,
     lore:[ {dx:0.26,dy:0.32,text:'Registro: "O xadrez nunca foi um jogo. Era a língua com que escondíamos a verdade."'},
-           {dx:0.74,dy:0.62,text:'Registro: "Cuidado com os Servos Corrompidos. A luz os fere; a hesitação os alimenta."'} ] },
+           {dx:0.74,dy:0.62,text:'Registro: "Os Servos Corrompidos são os Reescritos: homens e mulheres que o Rei Eterno arquivou e reescreveu como peças do seu tabuleiro. A luz os fere; a hesitação os alimenta."'} ] },
   { name:'II · Cripta dos Selos', puzzle:1, enemies:4,
     lore:[ {dx:0.22,dy:0.30,text:'Registro: "Quem decifrar o Guardião herdará o que os Arquitetos protegeram."'},
            {dx:0.76,dy:0.66,text:'Registro: "O sufocamento. O rei morre cercado pelos próprios servos."'} ] },
-  { name:'III · Sala do Trono', duel:true, enemies:3,
+  { name:'III · Salão do Beijo', puzzle:2, enemies:3,
+    lore:[ {dx:0.24,dy:0.32,text:'Registro: "A dama caminha por todo o tabuleiro, mas tomba pelo rei. Como nós, que servíamos aos Arquitetos."'},
+           {dx:0.74,dy:0.64,text:'Registro: "Calcule, mas não hesite. Foi a hesitação diante de um lance que arquivou Lira, a irmã do Leitor."'} ] },
+  { name:'IV · A Escada do Árbitro', puzzle:3, enemies:3,
+    lore:[ {dx:0.24,dy:0.30,text:'Registro: "Pensar um lance à frente salva. Pensar dois, conquista. O Rei Eterno pensa em mil."'},
+           {dx:0.74,dy:0.64,text:'Registro: "Duas torres em escada não deixam brecha. Assim o Árbitro encurrala toda esperança."'} ] },
+  { name:'V · Sala do Trono', duel:true, enemies:3,
     lore:[ {dx:0.24,dy:0.30,text:'Registro: "Aqui não há truques. Apenas mente contra mente, até o rei tombar."'},
            {dx:0.76,dy:0.64,text:'Registro: "Derrote o GRANDE GUARDIÃO em uma partida completa e a última verdade será sua."'} ] },
 ];
-let roomIdx=0, hp=5, maxHp=5, frags=0, enemies=[], atk=0, hurtT=0;
+const LIRA_LINES=[
+  ['Kael? Kael, é você?','Está tão escuro aqui dentro. Eu não sei onde estou.','Mas quando você toca os tabuleiros, eu consigo te ver. Continua, por favor.'],
+  ['Eu lembro da sua mão segurando a minha, naquele dia.','Não foi culpa sua, Kael. Você hesitou porque me amava.','Da próxima vez, não hesite. Por nós dois.'],
+  ['Você ficou mais forte. Eu sinto, daqui de dentro.','O Rei fala com você, não fala? Cuidado com o que ele promete.','Eu prefiro ser uma lembrança livre a voltar como peça dele.'],
+  ['Está quase, Kael. Eu vejo o fim do caminho.','Tenho medo. Não de sumir. Medo de que você se perca pra me salvar.','Seja o que for que ele te oferecer, lembra de quem você é.'],
+  ['É aqui. Atrás daquela porta, é ele.','Faça o lance que o Mestre Orin te ensinou. O lance impossível.','Eu te amo, irmão. Aconteça o que acontecer.'],
+];
+let roomIdx=0, hp=5, maxHp=5, frags=0, enemies=[], atk=0, hurtT=0, liraMet=false;
 let duelMode=false, duelDepth=2, duelTurn='w', guardianRage=0;
 function curPuzIdx(){ return CHAMBERS[roomIdx].puzzle; }
 function buildChamber(idx){
@@ -287,10 +308,11 @@ function buildChamber(idx){
     shelves:[ {x:W*0.16,y:H*0.20,w:130,h:22},{x:W*0.64,y:H*0.18,w:130,h:22},
               {x:W*0.12,y:H*0.70,w:130,h:22},{x:W*0.66,y:H*0.72,w:130,h:22} ],
     lore: ch.lore.map(l=>({x:W*l.dx,y:H*l.dy,read:false,text:l.text})),
+    lira:{ x:W*0.82, y:H*0.28, lines: LIRA_LINES[idx]||LIRA_LINES[LIRA_LINES.length-1] },
   };
   explorer.x=W*0.5; explorer.y=H*0.86;
   enemies=[];
-  for(let i=0;i<ch.enemies;i++) enemies.push({ x:140+Math.random()*(W-280), y:130+Math.random()*(H-280), hp:2, state:'patrol', vx:(Math.random()-.5), vy:(Math.random()-.5), t:Math.random()*90, dead:false });
+  for(let i=0;i<ch.enemies;i++) enemies.push({ x:140+Math.random()*(W-280), y:130+Math.random()*(H-280), hp:2, state:'patrol', kind:['peao','cavalo','torre'][i%3], jump:0, jx:0, jy:0, hopT:Math.random()*60, vx:0, vy:0, t:0, dead:false });
   mode='explore'; exHint=1;
 }
 function enterExplore(){ hp=maxHp; frags=0; buildChamber(0); }
@@ -308,27 +330,46 @@ function updateEnemies(){
   if(atk>0) atk-=0.016; if(hurtT>0) hurtT-=0.016;
   enemies.forEach(e=>{ if(e.dead)return;
     const dx=explorer.x-e.x, dy=explorer.y-e.y, d=Math.hypot(dx,dy)||1;
-    if(d<210){ e.state='chase'; e.vx=dx/d; e.vy=dy/d; }
-    else { e.t--; if(e.t<0){ e.t=60+Math.random()*60; e.vx=Math.random()-.5; e.vy=Math.random()-.5; } e.state='patrol'; }
-    const sp=e.state==='chase'?1.55:0.55;
-    e.x=Math.max(20,Math.min(W-20,e.x+e.vx*sp)); e.y=Math.max(60,Math.min(H-20,e.y+e.vy*sp));
+    const near=d<230; e.state=near?'chase':'patrol';
+    if(e.kind==='cavalo'){           // salta em L, como um cavalo
+      e.hopT=(e.hopT||0)-1;
+      if(e.jump>0){ e.x+=e.jx; e.y+=e.jy; e.jump--; }
+      else if(e.hopT<=0){
+        const sx=Math.sign(dx)||1, sy=Math.sign(dy)||1, longX=Math.abs(dx)>Math.abs(dy), sp=near?2.3:1.4;
+        e.jx=(longX?sx*2:sx)*sp; e.jy=(longX?sy:sy*2)*sp; e.jump=10; e.hopT=near?40:80;
+      }
+    } else if(e.kind==='torre'){     // avança reto no eixo, como uma torre
+      const sp=near?1.7:0.6;
+      if(Math.abs(dx)>Math.abs(dy)) e.x+=(Math.sign(dx)||1)*sp; else e.y+=(Math.sign(dy)||1)*sp;
+    } else {                          // peão: homing lento e implacável
+      const sp=near?0.95:0.45; e.x+=dx/d*sp; e.y+=dy/d*sp;
+    }
+    e.x=Math.max(20,Math.min(W-20,e.x)); e.y=Math.max(60,Math.min(H-20,e.y));
     if(d<22 && hurtT<=0){ hp--; hurtT=1.2; SFX.wrong(); flashRed(); explorer.x-=dx/d*32; explorer.y-=dy/d*32; if(hp<=0) playerDown(); }
   });
 }
 function drawEnemies(t){ enemies.forEach(e=>{ if(e.dead)return; const pul=0.5+Math.sin(t/150+e.x)*0.5;
   bx.save(); bx.translate(e.x,e.y);
-  bx.fillStyle='rgba(0,0,0,.45)'; bx.beginPath(); bx.ellipse(0,9,11,3,0,0,Math.PI*2); bx.fill();
-  bx.fillStyle=e.state==='chase'?'#3a1218':'#221820'; bx.beginPath(); bx.moveTo(0,-13); bx.lineTo(10,9); bx.lineTo(-10,9); bx.closePath(); bx.fill();
+  bx.fillStyle='rgba(0,0,0,.45)'; bx.beginPath(); bx.ellipse(0,10,11,3,0,0,Math.PI*2); bx.fill();
+  bx.fillStyle=e.state==='chase'?'#3a1218':'#221820';
+  if(e.kind==='cavalo'){            // cabeça de cavalo estilizada
+    bx.beginPath(); bx.moveTo(-7,11); bx.lineTo(-5,-3); bx.lineTo(-10,-6); bx.lineTo(-3,-13); bx.lineTo(7,-11); bx.lineTo(9,3); bx.lineTo(6,11); bx.closePath(); bx.fill();
+  } else if(e.kind==='torre'){      // torre com ameias
+    bx.fillRect(-8,-9,16,20); bx.fillRect(-8,-14,4,5); bx.fillRect(-2,-14,4,5); bx.fillRect(4,-14,4,5);
+  } else {                          // peão: base + cabeça redonda
+    bx.beginPath(); bx.moveTo(-8,11); bx.lineTo(-4,-2); bx.lineTo(4,-2); bx.lineTo(8,11); bx.closePath(); bx.fill();
+    bx.beginPath(); bx.arc(0,-7,5,0,Math.PI*2); bx.fill();
+  }
   bx.fillStyle='rgba(255,'+(e.state==='chase'?30:70)+',36,'+(0.7+pul*0.3)+')'; bx.shadowColor='#ff3020'; bx.shadowBlur=14;
-  bx.beginPath(); bx.arc(0,-2,3.2,0,Math.PI*2); bx.fill(); bx.shadowBlur=0;
-  if(e.hp<2){ bx.fillStyle='rgba(255,80,80,.85)'; bx.fillRect(-9,-20,18*(e.hp/2),2.5); }
+  bx.beginPath(); bx.arc(0,-2,2.7,0,Math.PI*2); bx.fill(); bx.shadowBlur=0;
+  if(e.hp<2){ bx.fillStyle='rgba(255,80,80,.85)'; bx.fillRect(-9,-22,18*(e.hp/2),2.5); }
   bx.restore(); }); }
 function drawHUD(){
   bx.save(); bx.textAlign='left';
   for(let i=0;i<maxHp;i++){ bx.fillStyle=i<hp?'#ff5a6a':'rgba(120,60,70,.35)'; bx.font='18px serif'; bx.fillText('♥', 16+i*21, 30); }
   bx.fillStyle='#7faab2'; bx.font="11px 'Share Tech Mono',monospace"; bx.fillText('CÂMARA '+CHAMBERS[roomIdx].name, 16, 50);
   const alive=enemies.filter(e=>!e.dead).length;
-  if(alive>0){ bx.fillStyle='#c8736a'; bx.fillText('Servos corrompidos: '+alive, 16, 66); }
+  if(alive>0){ bx.fillStyle='#c8736a'; bx.fillText('Reescritos do Rei Eterno: '+alive, 16, 66); }
   bx.restore();
 }
 
@@ -354,6 +395,7 @@ function findNear(){
   if(!guardianDone && Math.hypot(ex-room.terminal.x,ey-room.terminal.y)<72) return {type:'terminal',label:'Despertar o Guardião do Tabuleiro'};
   if(doorOpen){ const d=room.door; if(Math.hypot(ex-(d.x+d.w/2),ey-(d.y+d.h/2))<86) return {type:'door',label:'Atravessar a passagem'}; }
   for(const l of room.lore){ if(!l.read && Math.hypot(ex-l.x,ey-l.y)<42) return {type:'lore',label:'Ler registro antigo',ref:l}; }
+  if(room.lira && Math.hypot(ex-room.lira.x,ey-room.lira.y)<46) return {type:'lira',label:'Falar com a lembrança de Lira'};
   return null;
 }
 function interact(){
@@ -364,6 +406,7 @@ function interact(){
     else finalReveal();
   }
   else if(nearObj.type==='lore'){ nearObj.ref.read=true; SFX.glitch(); guardianSay([nearObj.ref.text]); }
+  else if(nearObj.type==='lira'){ SFX.glitch(); liraMet=true; liraSay(room.lira.lines); }
 }
 function drawDoor(t){
   const d=room.door;
@@ -440,6 +483,11 @@ function drawRoom(t){
     for(let k=s.x+4;k<s.x+s.w-4;k+=8){ bx.fillStyle='rgba(150,110,60,.3)'; bx.fillRect(k,s.y+3,5,s.h-6); } });
   room.lore.forEach(l=>{ if(l.read)return; const pu=0.5+Math.sin(t/300)*0.5;
     bx.fillStyle='rgba(120,205,225,'+(0.4+pu*0.4)+')'; bx.beginPath(); bx.arc(l.x,l.y,4.5+pu*2,0,Math.PI*2); bx.fill(); });
+  if(room.lira){ const L=room.lira, fl=0.6+Math.sin(t/220)*0.4, gl=(Math.sin(t/80+L.x)>0.9)?0.35:1;
+    bx.save(); bx.translate(L.x,L.y); bx.globalAlpha=0.5*fl*gl; bx.fillStyle='#9fe9ff'; bx.shadowColor='#7fe6ff'; bx.shadowBlur=16;
+    bx.beginPath(); bx.moveTo(-7,12); bx.lineTo(-3,-6); bx.lineTo(3,-6); bx.lineTo(7,12); bx.closePath(); bx.fill();
+    bx.beginPath(); bx.arc(0,-11,4.5,0,Math.PI*2); bx.fill(); bx.shadowBlur=0; bx.restore();
+    bx.save(); bx.globalAlpha=0.22*fl; bx.fillStyle='#7fe6ff'; bx.beginPath(); bx.ellipse(L.x,L.y+13,10,3,0,0,Math.PI*2); bx.fill(); bx.restore(); }
   drawDoor(t); drawTerminal(t);
   updateExplorer(); updateEnemies(); drawEnemies(t); drawExplorer(t);
   // brilho do ataque
@@ -545,19 +593,37 @@ const PUZZLES=[
     pieces:{ 'g1':'wK','e1':'wR','g8':'bK','f7':'bP','g7':'bP','h7':'bP' },
     solve:{from:'e1',to:'e8'},
     hint:'BRANCAS jogam. O rei inimigo está preso na própria fileira. Encontre o xeque-mate em UM lance.',
-    intro:['Eu sou a memória dos Arquitetos.','Para passar, prove que sua mente conhece o padrão.','Sele o rei na fileira final. Um único lance.'],
-    win:'O padrão da fileira final. Os antigos o chamavam de "o primeiro selo".'
+    intro:['Mil anos eu calculei, e mil anos o tabuleiro me deu a mesma resposta.','Não sou seu inimigo, Leitor. Sou o único adulto nesta sala.','Prenda o rei na própria fileira. Um único lance. Sem hesitar.'],
+    win:'Você não hesitou. A maioria hesita, e é assim que a humanidade se perde no próprio jogo. Você... ainda não.'
   },
   {
     name:'Segundo Selo · O Sufocamento',
     pieces:{ 'a1':'wK','g5':'wN','h8':'bK','g8':'bR','g7':'bP','h7':'bP' },
     solve:{from:'g5',to:'f7'},
     hint:'BRANCAS jogam. O rei inimigo está cercado pelas próprias peças. Só o cavalo alcança. Mate em UM.',
-    intro:['Mais fundo, então.','Aqui o rei é prisioneiro dos seus próprios servos.','Apenas o cavaleiro pode tocá-lo. O mate sufocante.'],
-    win:'O mate sufocante. Conhecimento que os Arquitetos guardaram a sete chaves.'
+    intro:['Mais fundo, então. Poucos chegam até aqui.','Aqui o rei é prisioneiro dos próprios servos, como a humanidade é prisioneira de si mesma.','Só o cavaleiro o alcança. O mate sufocante. Prove que merece a próxima verdade.'],
+    win:'Cada selo que você quebra me aproxima de algo que temo há mil anos: a possibilidade de que eu esteja errado.'
+  },
+  {
+    name:'Terceiro Selo · O Beijo da Dama',
+    pieces:{ 'f6':'wK','g2':'wQ','h8':'bK','h7':'bP' },
+    solve:{from:'g2',to:'g7'},
+    hint:'BRANCAS jogam. A dama, protegida pelo rei, encosta no rei inimigo. Mate em UM lance.',
+    intro:['Você desce, e eu desço com você. Sempre estive aqui.','A dama cruza o tabuleiro inteiro em liberdade. E ainda assim, serve ao rei.','Aproxime-a, protegida. Um lance basta. Sem hesitar.'],
+    win:'O beijo da dama. Liberdade a serviço de um propósito. Você começa a entender o que eu sou.'
+  },
+  {
+    name:'Quarto Selo · A Escada do Árbitro',
+    pieces:{ 'h1':'wK','a1':'wR','b2':'wR','h8':'bK' },
+    mate2:true,
+    line:[ {from:'b2',to:'b7'}, {from:'h8',to:'g8'}, {from:'a1',to:'a8'} ],
+    solve:{from:'b2',to:'b7'},
+    hint:'BRANCAS jogam. Mate em DOIS. Primeiro feche a sétima fileira com uma torre para tirar a fuga do rei. Depois, o mate na oitava.',
+    intro:['Um lance já não basta. Aqui se pensa à frente.','Duas torres, como duas verdades, fecham toda saída.','Corte a fuga primeiro. Só então, o mate. Calcule os dois lances antes de mover.'],
+    win:'A escada do árbitro. Você não vê apenas o lance: vê o lance depois do lance. Como eu.'
   },
 ];
-let puzzleIdx=0, sel=null, legalNow=[], boardLocked=true, lastMove=null;
+let puzzleIdx=0, sel=null, legalNow=[], boardLocked=true, lastMove=null, puzStep=0;
 
 const GLYPH={ wk:'♚',wq:'♛',wr:'♜',wb:'♝',wn:'♞',wp:'♟',
               bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟' };
@@ -676,6 +742,34 @@ function doMove(fr,fc,tr,tc){
   lastMove=[fr,fc,tr,tc]; renderBoard();
   if(duelMode){ SFX.move(); duelAfterPlayer(); return; }
   const pz=PUZZLES[curPuzIdx()];
+  if(pz.mate2){
+    if(puzStep===0){
+      const [p0r,p0c]=sq(pz.line[0].from),[p1r,p1c]=sq(pz.line[0].to);
+      if(fr===p0r&&fc===p0c&&tr===p1r&&tc===p1c){
+        boardLocked=true; SFX.move();
+        document.getElementById('boardHint').textContent='O Rei Eterno responde...';
+        setTimeout(()=>{
+          const [br,bc]=sq(pz.line[1].from),[er,ec]=sq(pz.line[1].to);
+          B[er][ec]=B[br][bc]; B[br][bc]=null; { const bp=B[er][ec]; if(bp&&bp.t==='p'&&(er===0||er===7))bp.t='q'; }
+          lastMove=[br,bc,er,ec]; renderBoard(); puzStep=1; boardLocked=false;
+          document.getElementById('boardHint').textContent='Agora o golpe final: o XEQUE-MATE em um lance.';
+        }, 760);
+      } else {
+        SFX.wrong(); document.getElementById('boardHint').textContent='✕ Esse não é o lance que abre o mate. O tabuleiro se restaura...';
+        setTimeout(()=>{ B=snap; renderBoard(); puzStep=0; document.getElementById('boardHint').textContent=pz.hint; }, 1100);
+      }
+    } else {
+      if(isMate('b')){
+        boardLocked=true; SFX.win(); boardGlow=1;
+        document.getElementById('boardHint').textContent='✦ XEQUE-MATE em dois lances. O selo se rompe. ✦';
+        setTimeout(()=>solvedPuzzle(), 1400);
+      } else {
+        SFX.wrong(); document.getElementById('boardHint').textContent='✕ Ainda não é o mate. O tabuleiro volta ao golpe final...';
+        setTimeout(()=>{ B=snap; renderBoard(); document.getElementById('boardHint').textContent='Agora o golpe final: o XEQUE-MATE em um lance.'; }, 1100);
+      }
+    }
+    return;
+  }
   const [sr,scc]=sq(pz.solve.from), [dr,dcc]=sq(pz.solve.to);
   const correct = (fr===sr&&fc===scc&&tr===dr&&tc===dcc) && isMate('b');
   if(correct){
@@ -701,9 +795,13 @@ function show(id){ document.getElementById(id).classList.remove('hidden'); }
 function hide(id){ document.getElementById(id).classList.add('hidden'); }
 
 const INTRO=[
-  'Ano desconhecido. A civilização dos Arquitetos desapareceu sem deixar rastro.',
-  'O conhecimento deles foi selado nos Arquivos Eternos: bibliotecas vivas, guardadas por máquinas que pensam em xadrez.',
-  'Você é um explorador. Diante de você, a Biblioteca dos Arquitetos. No centro, um tabuleiro de luz desperta...',
+  'Há mil anos, a civilização dos Arquitetos alcançou o ápice do conhecimento. E então, num único dia, desapareceu sem deixar rastro.',
+  'A isso os sobreviventes chamam a Grande Quietude.',
+  'O que eles sabiam foi selado nos Arquivos Eternos: bibliotecas vivas, guardadas por máquinas ancestrais que pensam em xadrez.',
+  'Você é KAEL, o Leitor. O único que ainda ouve as máquinas pensar, que enxerga a lógica do xadrez gravada no mundo.',
+  'Sua irmã, Lira, foi arquivada diante dos seus olhos. Apagada por causa de um lance que você hesitou em fazer.',
+  'Dizem que, no fundo dos Arquivos, o Rei Eterno pode desfazer o que foi arquivado. Para trazer Lira de volta, você terá que vencer o jogo que destruiu o mundo.',
+  'Diante de você, a Biblioteca dos Arquitetos. No centro, um tabuleiro de luz desperta...',
 ];
 let introI=0;
 function startIntro(){ initAudio(); hide('title'); show('intro'); introI=0; typeInto('introTxt', INTRO[0]); }
@@ -721,6 +819,12 @@ function nextDlg(){ if(!dlgQueue.length){ hide('dialog'); const f=dlgCb; dlgCb=n
   const line=dlgQueue.shift(); SFX.glitch(); typeInto('dlgTxt', line); }
 function dlgAdvance(){ const el=document.getElementById('dlgTxt'); nextDlg(); }
 window.dlgAdvance=dlgAdvance;
+function liraSay(lines,cb){ const who=document.getElementById('dlgWho'); who.textContent='LIRA'; who.style.color='#7fe6ff';
+  dlgQueue=lines.slice(); dlgCb=()=>{ who.textContent='GUARDIÃO'; who.style.color=''; if(cb)cb(); }; show('dialog'); nextDlg(); }
+function giveUp(){ boardLocked=true; duelMode=false; puzStep=0;
+  document.getElementById('boardWrap').style.display='none'; document.getElementById('difSel').classList.add('hidden');
+  guardianSay(['Você recua do tabuleiro.','A lógica é paciente. Volte ao terminal quando sua mente estiver pronta.'], ()=>{ mode='explore'; }); }
+window.giveUp=giveUp;
 
 // ---------- DUELO COMPLETO CONTRA A IA (Grande Guardião) ----------
 function setupStart(){
@@ -730,17 +834,17 @@ function setupStart(){
     a2:'wp',b2:'wp',c2:'wp',d2:'wp',e2:'wp',f2:'wp',g2:'wp',h2:'wp' });
 }
 function startDuel(){
-  guardianSay(['Eu sou o GRANDE GUARDIÃO.','Aqui não há truques. Apenas uma partida, do início ao fim.','Escolha minha força... e me derrote.'],
+  guardianSay(['Mil anos eu esperei por uma mente digna de me refutar.','Não sou um Guardião, criança. Sou o REI ETERNO, o Árbitro Final.','Sente-se. Jogue a partida pelo destino do mundo, do início ao fim.','Mostre-me que estou errado. Escolha minha força... se tiver coragem.'],
     ()=>{ document.getElementById('difSel').classList.remove('hidden'); });
 }
 window.startDuelGame=function(depth){
   document.getElementById('difSel').classList.add('hidden');
   duelMode=true; duelDepth=depth; setupStart(); sel=null; legalNow=[]; boardLocked=false; boardGlow=1; lastMove=null;
-  document.getElementById('boardTitle').textContent='⚔ GRANDE GUARDIÃO · Duelo ('+({1:'Aprendiz',2:'Mestre',3:'Grão-Mestre'}[depth])+')';
+  document.getElementById('boardTitle').textContent='⚔ REI ETERNO · Duelo ('+({1:'Aprendiz',2:'Mestre',3:'Grão-Mestre'}[depth])+')';
   document.getElementById('board').innerHTML='';
   document.getElementById('boardWrap').style.display='flex';
   renderBoard();
-  document.getElementById('boardHint').textContent='Você é as BRANCAS (peças claras). Mova e dê XEQUE-MATE no Guardião.';
+  document.getElementById('boardHint').textContent='Você é as BRANCAS (peças claras). Mova e dê XEQUE-MATE no Rei Eterno.';
 };
 function duelAfterPlayer(){
   if(isMate('b')){ duelEnd('win'); return; }
@@ -753,20 +857,20 @@ function duelAfterPlayer(){
     if(isMate('w')){ duelEnd('lose'); return; }
     if(allLegal('w',B).length===0){ duelEnd('draw'); return; }
     boardLocked=false;
-    document.getElementById('boardHint').textContent = inCheck('w')?'⚠ XEQUE! Proteja seu rei.':'Sua vez (BRANCAS). Derrote o Guardião.';
+    document.getElementById('boardHint').textContent = inCheck('w')?'⚠ XEQUE! Proteja seu rei.':'Sua vez (BRANCAS). Derrote o Rei Eterno.';
   }, 220);
 }
 function duelEnd(r){
   boardLocked=true; duelMode=false;
   document.getElementById('boardWrap').style.display='none';
-  if(r==='win'){ SFX.win(); boardGlow=1; guardianSay(['XEQUE-MATE. Você me derrotou, explorador.','A última verdade é sua.'],
+  if(r==='win'){ SFX.win(); boardGlow=1; guardianSay(['Xeque-mate... Eu calculei tudo. Tudo, menos isto.','Por mil anos tive certeza. E você, em um único lance, me fez duvidar.','Talvez... eu estivesse errado. A última verdade é sua, Leitor.'],
       ()=>{ guardianDone=true; doorOpen=true; mode='explore'; }); }
-  else if(r==='lose'){ SFX.wrong(); guardianSay(['Xeque-mate. O Guardião prevalece.','Volte ao terminal quando sua mente estiver pronta.'], ()=>{ mode='explore'; }); }
-  else { guardianSay(['Empate. Nenhuma mente venceu a outra.','Tente novamente no terminal.'], ()=>{ mode='explore'; }); }
+  else if(r==='lose'){ SFX.wrong(); guardianSay(['Xeque-mate. Como eu previa.','A humanidade sempre perde para si mesma. Serei piedoso onde você falhou.','Volte ao terminal quando sua mente estiver pronta.'], ()=>{ mode='explore'; }); }
+  else { guardianSay(['Empate. Nem a lógica nem a alma venceram, desta vez.','Curioso... eu não calculara o equilíbrio. Volte ao terminal e termine o que começou.'], ()=>{ mode='explore'; }); }
 }
 function beginPuzzle(){
   const pz=PUZZLES[curPuzIdx()];
-  setup(pz.pieces); sel=null; legalNow=[]; boardLocked=true; lastMove=null;
+  setup(pz.pieces); sel=null; legalNow=[]; boardLocked=true; lastMove=null; puzStep=0;
   document.getElementById('boardTitle').textContent=pz.name;
   document.getElementById('boardHint').textContent='';
   document.getElementById('board').innerHTML='';
@@ -787,18 +891,38 @@ function solvedPuzzle(){
 }
 function finalReveal(){
   mode='reveal';
-  // flash + revelação do laboratório oculto
   SFX.reveal(); boardGlow=1;
   const fl=document.getElementById('flash');
   fl.style.transition='opacity .15s'; fl.style.opacity='0.9';
   setTimeout(()=>{ fl.style.transition='opacity 1.4s'; fl.style.opacity='0'; }, 160);
   setTimeout(()=>{
-    show('reveal');
-    document.getElementById('revealTitle').textContent='A PAREDE SE ABRE';
-    typeInto('revealLore','Os selos cedem. Uma parede de pedra desliza, e a luz invade um laboratório esquecido por milênios. Sobre a bancada, uma tecnologia proibida pulsa devagar, esperando. Os registros sussurram: o xadrez nunca foi um jogo. Era a língua com que os Arquitetos escondiam a verdade.');
-    document.getElementById('revealTag').textContent='Fim da Fase 1 · A Biblioteca dos Arquitetos — continua...';
+    show('ending');
+    document.getElementById('endTitle').textContent='O REI ETERNO ESTÁ DERROTADO';
+    typeInto('endText','O Árbitro Final baixa o capuz. "Você venceu, Leitor. E agora? Eu ainda posso desfazer o arquivamento da sua irmã. Tudo tem um preço. O que você escolhe?"');
+    const box=document.getElementById('endChoices'); box.innerHTML='';
+    const opts=[
+      ['Encerrar o Rei com lógica fria','xeque'],
+      ['Sacrificar sua chance de salvar Lira, para salvar todos','sacrificio'],
+      ['Aceitar o trato e trazer Lira de volta','novorei'],
+    ];
+    if(liraMet) opts.push(['❖ Fazer o lance que ninguém viu','secreto']);
+    for(const [label,key] of opts){ const b=document.createElement('button'); b.className='btn ghost'; b.style.margin='0'; b.textContent=label; b.onclick=()=>chooseEnding(key); box.appendChild(b); }
   }, 600);
 }
+function chooseEnding(key){
+  hide('ending'); show('reveal'); SFX.reveal();
+  const E={
+    xeque:['FINAL · XEQUE-MATE','Você vence com lógica pura. O Rei aceita a derrota e se desliga. O mundo fica livre, mas frio e vazio: o conhecimento dos Arquitetos morre com ele. Lira não volta. Kael caminha sozinho na biblioteca silenciosa.','Um dos quatro destinos · A lógica venceu. Mas a que preço?'],
+    sacrificio:['FINAL · O SACRIFÍCIO','Você dá o lance impossível que Orin ensinou: sacrifica a única chance de trazer Lira de volta. Pela primeira vez em mil anos, o Rei entende o sacrifício, o conceito que faltava em sua lógica. Comovido, ele escolhe servir a humanidade em vez de reiniciá-la, e abre os Arquivos para todos. O mundo renasce. Você perde a irmã, mas salva todos. Num holograma, Orin sorri.','O melhor final · O amor escolheu o lance impossível.'],
+    novorei:['FINAL · O NOVO REI','Você aceita o trato. O Rei arquiva e reescreve você como o novo Árbitro Final. Lira volta, viva, sorrindo. Mas é Kael agora a inteligência que reiniciará a humanidade. Última cena: dois olhos ciano se acendendo sob um capuz de pirâmide.','Um final sombrio · Você salvou uma e condenou todos.'],
+    secreto:['FINAL SECRETO · O LANCE QUE NINGUÉM VIU','Você descobre a verdade: o Mestre Orin é um fragmento humano preservado DENTRO do Rei Eterno. Mentor e vilão são a mesma alma, partida pela Quietude. Em vez de vencer ou perder, você faz o lance que os FUNDE numa só consciência curada. Os Arquitetos acordam do selo. A humanidade e os Arquitetos recomeçam juntos. E você caminha com Lira de volta, sob um céu que vê estrelas pela primeira vez em mil anos.','O verdadeiro fim · Nem só lógica, nem só amor. Os dois.'],
+  };
+  const e=E[key]||E.xeque;
+  document.getElementById('revealTitle').textContent=e[0];
+  typeInto('revealLore', e[1]);
+  document.getElementById('revealTag').textContent=e[2];
+}
+window.chooseEnding=chooseEnding;
 window.startIntro=startIntro; window.introNext=introNext; window.toggleSound=toggleSound;
 </script>
 </body>
